@@ -16,6 +16,8 @@ function detectTechnologies(): TechDetection[] {
   const techs: TechDetection[] = []
   const w = window as any
   const html = document.documentElement.outerHTML
+  const scriptEls = Array.from(document.querySelectorAll("script[src], link[href]"))
+  const srcs = scriptEls.map((s) => s.getAttribute("src") || s.getAttribute("href") || "").join(" ").toLowerCase()
 
   // Frameworks
   if (w.__NEXT_DATA__ || document.querySelector("#__next")) {
@@ -72,15 +74,45 @@ function detectTechnologies(): TechDetection[] {
   if (document.querySelector('[class*="MuiBox"]') || document.querySelector('[class*="css-"][class*="MuiButton"]')) {
     techs.push({ name: "Material UI", category: "CSS", confidence: "high" })
   }
+  if (document.querySelector('[class*="ant-"]')) {
+    techs.push({ name: "Ant Design", category: "CSS", confidence: "high" })
+  }
+  if (document.querySelector('[class*="mantine-"]')) {
+    techs.push({ name: "Mantine", category: "CSS", confidence: "high" })
+  }
+  if (document.querySelector('[class*="radix-"]') || document.querySelector('[data-radix-collection-item]')) {
+    techs.push({ name: "Radix UI", category: "CSS", confidence: "high" })
+  }
+  if (srcs.includes("styled-components") || document.querySelector('style[data-styled]')) {
+    techs.push({ name: "styled-components", category: "CSS", confidence: "high" })
+  }
+  if (document.querySelector('[class*="emotion-"]') || document.querySelector('style[data-emotion]')) {
+    techs.push({ name: "Emotion", category: "CSS", confidence: "high" })
+  }
+  if (document.querySelector('link[href*="bulma"]') || document.querySelector('.bulma')) {
+    techs.push({ name: "Bulma", category: "CSS", confidence: "high" })
+  }
+  if (document.querySelector('[class*="foundation-"]') || w.Foundation) {
+    techs.push({ name: "Foundation", category: "CSS", confidence: "high" })
+  }
 
   // State Management
   if (w.__REDUX_DEVTOOLS_EXTENSION__ || w.__REDUX_STORE__) {
     techs.push({ name: "Redux", category: "State", confidence: "medium" })
   }
+  if (w.__MOBX_DEVTOOLS_GLOBAL_HOOK__ || w.mobx) {
+    techs.push({ name: "MobX", category: "State", confidence: "medium" })
+  }
+  if (document.querySelector("[data-rk]") || w.zustand) {
+    techs.push({ name: "Zustand", category: "State", confidence: "low" })
+  }
 
   // Analytics & Services
   if (w.gtag || w.ga || w.google_tag_manager) {
     techs.push({ name: "Google Analytics", category: "Analytics", confidence: "high" })
+  }
+  if (w.google_tag_manager || document.querySelector('script[src*="googletagmanager"]')) {
+    techs.push({ name: "Google Tag Manager", category: "Analytics", confidence: "high" })
   }
   if (w.mixpanel) {
     techs.push({ name: "Mixpanel", category: "Analytics", confidence: "high" })
@@ -94,13 +126,55 @@ function detectTechnologies(): TechDetection[] {
   if (w.Intercom) {
     techs.push({ name: "Intercom", category: "Support", confidence: "high" })
   }
+  if (w.drift) {
+    techs.push({ name: "Drift", category: "Support", confidence: "high" })
+  }
+  if (w.Crisp) {
+    techs.push({ name: "Crisp", category: "Support", confidence: "high" })
+  }
+  if (w.zE || document.querySelector("#ze-snippet")) {
+    techs.push({ name: "Zendesk", category: "Support", confidence: "high" })
+  }
+  if (w.HubSpotConversations || document.querySelector('script[src*="hubspot"]')) {
+    techs.push({ name: "HubSpot", category: "Marketing", confidence: "high" })
+  }
+  if (w.hj || document.querySelector('script[src*="hotjar"]')) {
+    techs.push({ name: "Hotjar", category: "Analytics", confidence: "high" })
+  }
+  if (w.Segment || w.analytics?.identify) {
+    techs.push({ name: "Segment", category: "Analytics", confidence: "medium" })
+  }
+  if (w.posthog || document.querySelector('script[src*="posthog"]')) {
+    techs.push({ name: "PostHog", category: "Analytics", confidence: "high" })
+  }
+  if (w.plausible || document.querySelector('script[src*="plausible"]')) {
+    techs.push({ name: "Plausible", category: "Analytics", confidence: "high" })
+  }
+  if (document.querySelector('script[src*="cloudflareinsights"]') || w.__cfBeacon) {
+    techs.push({ name: "Cloudflare Web Analytics", category: "Analytics", confidence: "high" })
+  }
   if (document.querySelector('[data-nextjs-scroll-focus-boundary]')) {
     techs.push({ name: "Next.js App Router", category: "Framework", confidence: "high" })
   }
 
-  // Hosting / CDN
+  // Hosting / CDN / CMS
   if (document.querySelector('meta[name="generator"][content*="WordPress"]') || w.wp) {
     techs.push({ name: "WordPress", category: "CMS", confidence: "high" })
+  }
+  if (document.querySelector('meta[name="generator"][content*="Drupal"]')) {
+    techs.push({ name: "Drupal", category: "CMS", confidence: "high" })
+  }
+  if (document.querySelector('meta[name="generator"][content*="Joomla"]')) {
+    techs.push({ name: "Joomla", category: "CMS", confidence: "high" })
+  }
+  if (document.querySelector('meta[name="generator"][content*="Ghost"]') || w.ghost) {
+    techs.push({ name: "Ghost", category: "CMS", confidence: "high" })
+  }
+  if (document.querySelector('meta[name="generator"][content*="Hugo"]')) {
+    techs.push({ name: "Hugo", category: "SSG", confidence: "high" })
+  }
+  if (document.querySelector('meta[name="generator"][content*="Jekyll"]')) {
+    techs.push({ name: "Jekyll", category: "SSG", confidence: "high" })
   }
   if (document.querySelector('meta[name="generator"][content*="Shopify"]') || w.Shopify) {
     techs.push({ name: "Shopify", category: "Platform", confidence: "high" })
@@ -113,6 +187,38 @@ function detectTechnologies(): TechDetection[] {
   }
   if (document.querySelector('meta[name="generator"][content*="Wix"]') || w.wixBiSession) {
     techs.push({ name: "Wix", category: "Platform", confidence: "high" })
+  }
+  if (document.querySelector('meta[name="generator"][content*="Framer"]') || w.__framer) {
+    techs.push({ name: "Framer", category: "Platform", confidence: "high" })
+  }
+  if (w.Notion || document.querySelector('meta[property="og:site_name"][content="Notion"]')) {
+    techs.push({ name: "Notion", category: "Platform", confidence: "high" })
+  }
+
+  // CDN / Hosting
+  if (srcs.includes("cloudflare") || srcs.includes("cdnjs.cloudflare")) {
+    techs.push({ name: "Cloudflare CDN", category: "CDN", confidence: "medium" })
+  }
+  if (srcs.includes("unpkg.com")) {
+    techs.push({ name: "unpkg", category: "CDN", confidence: "high" })
+  }
+  if (srcs.includes("jsdelivr")) {
+    techs.push({ name: "jsDelivr", category: "CDN", confidence: "high" })
+  }
+  if (srcs.includes("vercel") || document.querySelector('meta[name="x-vercel-id"]')) {
+    techs.push({ name: "Vercel", category: "Hosting", confidence: "high" })
+  }
+  if (srcs.includes("netlify") || document.querySelector('meta[name="generator"][content*="Netlify"]')) {
+    techs.push({ name: "Netlify", category: "Hosting", confidence: "high" })
+  }
+  if (document.querySelector('meta[name="firebase-app"]') || srcs.includes("firebase")) {
+    techs.push({ name: "Firebase", category: "Backend", confidence: "medium" })
+  }
+  if (srcs.includes("supabase")) {
+    techs.push({ name: "Supabase", category: "Backend", confidence: "medium" })
+  }
+  if (srcs.includes("aws") || srcs.includes("amazonaws")) {
+    techs.push({ name: "AWS", category: "Cloud", confidence: "medium" })
   }
 
   // JavaScript Libraries
@@ -128,6 +234,68 @@ function detectTechnologies(): TechDetection[] {
   }
   if (w.d3) {
     techs.push({ name: "D3.js", category: "Visualization", confidence: "high" })
+  }
+  if (w.Chart) {
+    techs.push({ name: "Chart.js", category: "Visualization", confidence: "high" })
+  }
+  if (w.Highcharts) {
+    techs.push({ name: "Highcharts", category: "Visualization", confidence: "high" })
+  }
+  if (w.Lodash || w._?.VERSION) {
+    techs.push({ name: "Lodash", category: "Library", version: w._?.VERSION, confidence: "high" })
+  }
+  if (w.moment) {
+    techs.push({ name: "Moment.js", category: "Library", confidence: "high" })
+  }
+  if (w.axios) {
+    techs.push({ name: "Axios", category: "Library", confidence: "medium" })
+  }
+  if (w.io || srcs.includes("socket.io")) {
+    techs.push({ name: "Socket.IO", category: "Realtime", confidence: "medium" })
+  }
+  if (w.Stripe || srcs.includes("stripe.com")) {
+    techs.push({ name: "Stripe", category: "Payments", confidence: "high" })
+  }
+  if (srcs.includes("paypal")) {
+    techs.push({ name: "PayPal", category: "Payments", confidence: "high" })
+  }
+  if (w.google?.maps || srcs.includes("maps.googleapis")) {
+    techs.push({ name: "Google Maps", category: "Maps", confidence: "high" })
+  }
+  if (w.mapboxgl || srcs.includes("mapbox")) {
+    techs.push({ name: "Mapbox", category: "Maps", confidence: "high" })
+  }
+  if (w.L?.map || srcs.includes("leaflet")) {
+    techs.push({ name: "Leaflet", category: "Maps", confidence: "high" })
+  }
+
+  // Auth
+  if (srcs.includes("auth0")) {
+    techs.push({ name: "Auth0", category: "Auth", confidence: "high" })
+  }
+  if (srcs.includes("clerk")) {
+    techs.push({ name: "Clerk", category: "Auth", confidence: "high" })
+  }
+  if (document.querySelector('meta[name="google-signin-client_id"]') || srcs.includes("accounts.google")) {
+    techs.push({ name: "Google Sign-In", category: "Auth", confidence: "high" })
+  }
+
+  // Testing/Dev
+  if (w.__STORYBOOK_ADDONS) {
+    techs.push({ name: "Storybook", category: "Dev", confidence: "high" })
+  }
+
+  // PWA
+  if (document.querySelector('link[rel="manifest"]')) {
+    techs.push({ name: "PWA", category: "Feature", confidence: "medium" })
+  }
+
+  // Fonts
+  if (srcs.includes("fonts.googleapis") || srcs.includes("fonts.gstatic")) {
+    techs.push({ name: "Google Fonts", category: "Font", confidence: "high" })
+  }
+  if (srcs.includes("use.typekit") || srcs.includes("adobe")) {
+    techs.push({ name: "Adobe Fonts", category: "Font", confidence: "high" })
   }
 
   // Server hints

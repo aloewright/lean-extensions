@@ -18,6 +18,10 @@ interface IpInfo {
 interface SiteIpInfo {
   ip: string
   hostname: string
+  city?: string
+  region?: string
+  country?: string
+  org?: string
 }
 
 interface FeedInfo {
@@ -77,14 +81,22 @@ export function useInfoPanels() {
         }
       })
 
-      // Site IP
+      // Site IP + geo
       if (tab.url) {
         try {
           const hostname = new URL(tab.url).hostname
           if (hostname) {
             chrome.runtime.sendMessage({ type: "RESOLVE_IP", hostname }, (response) => {
-              if (chrome.runtime.lastError) return
-              if (response?.ip) setSiteIp({ ip: response.ip, hostname })
+              if (chrome.runtime.lastError || !response?.ip) return
+              const ip = response.ip
+              setSiteIp({ ip, hostname })
+              // Fetch geo info for the site IP
+              fetch(`https://ipinfo.io/${ip}/json?token=`)
+                .then((r) => r.json())
+                .then((data) => {
+                  setSiteIp({ ip, hostname, city: data.city, region: data.region, country: data.country, org: data.org })
+                })
+                .catch(() => {})
             })
           }
         } catch {}
@@ -194,6 +206,18 @@ export function NetworkPanel({ userIp, siteIp, onCopy }: { userIp: IpInfo | null
             <span className="text-[11px] text-fg/40">Host</span>
             <span className="text-xs text-fg/60 font-mono">{siteIp.hostname}</span>
           </div>
+          {siteIp.city && (
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-fg/40">Site Location</span>
+              <span className="text-xs text-fg/60">{[siteIp.city, siteIp.region, siteIp.country].filter(Boolean).join(", ")}</span>
+            </div>
+          )}
+          {siteIp.org && (
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-fg/40">Site ISP</span>
+              <span className="text-xs text-fg/60 truncate max-w-[200px]">{siteIp.org}</span>
+            </div>
+          )}
         </>
       )}
     </div>

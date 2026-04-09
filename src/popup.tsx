@@ -1,18 +1,26 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import "./style.css"
 import { useExtensions } from "./hooks/useExtensions"
-import { useSettings } from "./hooks/useStorage"
+import { useSettings, useProfiles } from "./hooks/useStorage"
+import type { Profile } from "./types"
 
 function Popup() {
   const { extensions, loading, toggleExtension, toggleAll } = useExtensions()
   const { settings, update } = useSettings()
+  const { profiles } = useProfiles()
   const [search, setSearch] = useState("")
+  const [toast, setToast] = useState<string | null>(null)
 
   const filtered = extensions.filter((e) =>
     e.name.toLowerCase().includes(search.toLowerCase())
   )
 
   const enabledCount = extensions.filter((e) => e.enabled).length
+
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2000)
+  }
 
   const openDashboard = () => {
     chrome.tabs.create({ url: chrome.runtime.getURL("tabs/dashboard.html"), pinned: true })
@@ -26,12 +34,14 @@ function Popup() {
     link.href = dataUrl
     link.download = `screenshot-${Date.now()}.png`
     link.click()
+    showToast("Screenshot saved")
   }
 
   const captureAsPdf = async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
     if (!tab?.id) return
     chrome.runtime.sendMessage({ type: "CAPTURE_PDF", tabId: tab.id })
+    showToast("Saving PDF...")
   }
 
   const saveCurrentLink = async () => {
@@ -42,6 +52,17 @@ function Popup() {
       url: tab.url,
       title: tab.title
     })
+    showToast("Link saved")
+  }
+
+  const switchProfile = (profile: Profile) => {
+    chrome.runtime.sendMessage({
+      type: "SWITCH_PROFILE",
+      extensionIds: profile.extensionIds,
+      alwaysEnabled: settings.alwaysEnabled || []
+    })
+    update({ activeProfileId: profile.id })
+    showToast(`Switched to ${profile.name}`)
   }
 
   if (loading) {
@@ -53,7 +74,14 @@ function Popup() {
   }
 
   return (
-    <div className="w-[360px] max-h-[520px] bg-bg text-fg font-sans overflow-hidden flex flex-col">
+    <div className="w-[360px] max-h-[520px] bg-bg text-fg font-sans overflow-hidden flex flex-col relative">
+      {/* Toast */}
+      {toast && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 text-[11px] py-1 px-3 rounded bg-chart-1/20 text-chart-1 animate-fade-in">
+          {toast}
+        </div>
+      )}
+
       {/* Header */}
       <div className="p-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -103,15 +131,36 @@ function Popup() {
         </div>
       </div>
 
+      {/* Profile Switcher */}
+      {profiles.length > 0 && (
+        <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+          <span className="text-[10px] text-fg/30 uppercase tracking-wider">Profile</span>
+          <div className="flex gap-1 flex-1 overflow-x-auto">
+            {profiles.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => switchProfile(p)}
+                className={`text-[11px] py-1 px-2.5 rounded whitespace-nowrap transition-colors ${
+                  settings.activeProfileId === p.id
+                    ? "bg-chart-1/20 text-chart-1"
+                    : "bg-accent/50 text-fg/50 hover:text-fg hover:bg-accent"
+                }`}>
+                {p.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions */}
       <div className="px-3 py-2 border-b border-border flex gap-2">
         <button
-          onClick={() => toggleAll(true, settings.alwaysEnabled)}
+          onClick={() => { toggleAll(true, settings.alwaysEnabled); showToast("All enabled") }}
           className="flex-1 text-xs py-1.5 px-3 rounded bg-accent hover:bg-accent/80 text-fg transition-colors">
           Enable All
         </button>
         <button
-          onClick={() => toggleAll(false, settings.alwaysEnabled)}
+          onClick={() => { toggleAll(false, settings.alwaysEnabled); showToast("All disabled (pinned kept)") }}
           className="flex-1 text-xs py-1.5 px-3 rounded bg-accent hover:bg-accent/80 text-fg transition-colors">
           Disable All
         </button>

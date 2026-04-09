@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./src/**/*.tsx"],
+  content: ["./src/**/*.tsx", "./src/**/*.ts"],
   darkMode: "class",
   theme: {
     extend: {
@@ -32,6 +32,15 @@ module.exports = {
       },
       boxShadow: {
         card: "0px 8px 15px rgba(0,0,0,30%)"
+      },
+      keyframes: {
+        "fade-in": {
+          "0%": { opacity: "0", transform: "translateX(-50%) translateY(-4px)" },
+          "100%": { opacity: "1", transform: "translateX(-50%) translateY(0)" }
+        }
+      },
+      animation: {
+        "fade-in": "fade-in 0.15s ease-out"
       }
     }
   },

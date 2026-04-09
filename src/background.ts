@@ -1,5 +1,22 @@
-import { getLinks, getSettings, setLinks } from "./storage"
+import { getLinks, getSettings, setLinks, setSettings } from "./storage"
 import type { CollectedLink } from "./types"
+
+// Badge: show enabled extension count
+async function updateBadge() {
+  const all = await chrome.management.getAll()
+  const count = all.filter(
+    (e) => e.type === "extension" && e.id !== chrome.runtime.id && e.enabled
+  ).length
+  chrome.action.setBadgeText({ text: String(count) })
+  chrome.action.setBadgeBackgroundColor({ color: "#505055" })
+  chrome.action.setBadgeTextColor({ color: "#f1f1f1" })
+}
+
+updateBadge()
+chrome.management.onEnabled.addListener(updateBadge)
+chrome.management.onDisabled.addListener(updateBadge)
+chrome.management.onInstalled.addListener(updateBadge)
+chrome.management.onUninstalled.addListener(updateBadge)
 
 // Handle messages from popup and dashboard
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -22,6 +39,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     switchProfile(message.extensionIds, message.alwaysEnabled).then(() =>
       sendResponse({ ok: true })
     )
+    return true
+  }
+
+  if (message.type === "UPDATE_SETTING") {
+    getSettings().then(async (s) => {
+      const next = { ...s, [message.key]: message.value }
+      await setSettings(next)
+      sendResponse({ ok: true })
+    })
     return true
   }
 })

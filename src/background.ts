@@ -80,6 +80,35 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     sendResponse({ techs: entry?.techs || [] })
   }
 
+  if (message.type === "SAVE_LOGIN_PREF") {
+    chrome.storage.local.get("loginPreferences").then(async (result) => {
+      const prefs = result.loginPreferences || []
+      const existing = prefs.findIndex((p: any) => p.domain === message.domain)
+      const pref = { domain: message.domain, method: "social", provider: message.provider, selector: message.selector }
+      if (existing >= 0) prefs[existing] = pref
+      else prefs.push(pref)
+      await chrome.storage.local.set({ loginPreferences: prefs })
+      sendResponse({ ok: true })
+    })
+    return true
+  }
+
+  if (message.type === "REMOVE_LOGIN_PREF") {
+    chrome.storage.local.get("loginPreferences").then(async (result) => {
+      const prefs = (result.loginPreferences || []).filter((p: any) => p.domain !== message.domain)
+      await chrome.storage.local.set({ loginPreferences: prefs })
+      sendResponse({ ok: true })
+    })
+    return true
+  }
+
+  if (message.type === "GET_LOGIN_PREFS") {
+    chrome.storage.local.get("loginPreferences").then((result) => {
+      sendResponse({ prefs: result.loginPreferences || [] })
+    })
+    return true
+  }
+
   if (message.type === "RESOLVE_IP") {
     resolveHostname(message.hostname).then((ip) => sendResponse({ ip }))
     return true

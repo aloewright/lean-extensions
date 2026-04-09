@@ -286,10 +286,10 @@ export function ExtensionsSection({
                       : [...(settings.alwaysEnabled || []), ext.id]
                     onUpdateSettings({ alwaysEnabled: next })
                   }}
-                  title={isPinned ? "Unpin" : "Always enabled"}
+                  title={isPinned ? "Unpin" : "Pin as always enabled"}
                   className={`p-1.5 rounded transition-all ${isPinned ? "text-chart-4" : "text-fg/20 opacity-0 group-hover:opacity-100 hover:text-fg/50"}`}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    <path d="M12 17v5M9 2h6l1 7h2l-1 4H7L6 9h2l1-7z" />
                   </svg>
                 </button>
                 <button

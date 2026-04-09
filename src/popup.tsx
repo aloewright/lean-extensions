@@ -3,7 +3,7 @@ import "./style.css"
 import { useExtensions } from "./hooks/useExtensions"
 import { useSettings, useProfiles } from "./hooks/useStorage"
 import { FuzzySearchInput } from "./components/FuzzySearchInput"
-import { useInfoPanels, NetworkButton, TechButton, RssButton, NetworkPanel, TechPanel, RssPanel } from "./components/InfoPanels"
+import { useInfoPanels, NetworkButton, TechButton, RssButton, LoginButton, NetworkPanel, TechPanel, RssPanel, LoginPanel } from "./components/InfoPanels"
 import { fuzzySearch } from "./utils/fuzzy"
 import type { Profile } from "./types"
 
@@ -98,6 +98,7 @@ function Popup() {
           <NetworkButton active={info.activePanel === "network"} hasData={!!info.userIp} onClick={() => info.toggle("network")} />
           <TechButton active={info.activePanel === "tech"} count={info.techs.length} onClick={() => info.toggle("tech")} />
           <RssButton active={info.activePanel === "rss"} count={info.feeds.length} onClick={() => info.toggle("rss")} />
+          <LoginButton active={info.activePanel === "login"} hasLogin={!!(info.loginInfo?.hasForm || info.loginInfo?.socials.length)} onClick={() => info.toggle("login")} />
           <button onClick={saveCurrentLink} title="Save current page link"
             className="p-1.5 rounded hover:bg-accent text-fg/60 hover:text-fg transition-colors">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -131,6 +132,29 @@ function Popup() {
       {info.activePanel === "network" && <NetworkPanel userIp={info.userIp} siteIp={info.siteIp} onCopy={copyAndToast} />}
       {info.activePanel === "tech" && <TechPanel techs={info.techs} />}
       {info.activePanel === "rss" && <RssPanel feeds={info.feeds} onCopy={copyAndToast} />}
+      {info.activePanel === "login" && (
+        <LoginPanel
+          loginInfo={info.loginInfo}
+          onSave={(provider, selector) => {
+            const hostname = info.loginInfo?.hostname
+            if (!hostname) return
+            chrome.runtime.sendMessage({ type: "SAVE_LOGIN_PREF", domain: hostname, provider, selector })
+            // Also tell the content script to click it now
+            chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+              if (tab?.id) chrome.tabs.sendMessage(tab.id, { type: "SAVE_SOCIAL_LOGIN", provider })
+            })
+            info.setLoginInfo({ ...info.loginInfo!, savedProvider: provider })
+            showToast(`Will auto-sign in with ${provider}`)
+          }}
+          onRemove={() => {
+            const hostname = info.loginInfo?.hostname
+            if (!hostname) return
+            chrome.runtime.sendMessage({ type: "REMOVE_LOGIN_PREF", domain: hostname })
+            info.setLoginInfo({ ...info.loginInfo!, savedProvider: undefined })
+            showToast("Auto-login removed")
+          }}
+        />
+      )}
 
       {/* Profile Switcher */}
       {profiles.length > 0 && (
@@ -190,9 +214,9 @@ function Popup() {
                   update({ alwaysEnabled: next })
                 }}
                 title={isPinned ? "Unpin" : "Pin as always enabled"}
-                className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isPinned ? "text-chart-4 opacity-100" : "text-fg/30 hover:text-fg/60"}`}>
+                className={`p-1 rounded transition-opacity ${isPinned ? "text-chart-4 opacity-100" : "text-fg/30 hover:text-fg/60 opacity-0 group-hover:opacity-100"}`}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  <path d="M12 17v5M9 2h6l1 7h2l-1 4H7L6 9h2l1-7z" />
                 </svg>
               </button>
               <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">

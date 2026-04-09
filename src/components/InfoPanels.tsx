@@ -26,13 +26,21 @@ interface FeedInfo {
   type: "rss" | "atom" | "json"
 }
 
-type Panel = "network" | "tech" | "rss" | null
+interface LoginInfo {
+  hostname: string
+  hasForm: boolean
+  socials: { provider: string; selector: string }[]
+  savedProvider?: string
+}
+
+type Panel = "network" | "tech" | "rss" | "login" | null
 
 export function useInfoPanels() {
   const [techs, setTechs] = useState<TechInfo[]>([])
   const [userIp, setUserIp] = useState<IpInfo | null>(null)
   const [siteIp, setSiteIp] = useState<SiteIpInfo | null>(null)
   const [feeds, setFeeds] = useState<FeedInfo[]>([])
+  const [loginInfo, setLoginInfo] = useState<LoginInfo | null>(null)
   const [activePanel, setActivePanel] = useState<Panel>(null)
 
   useEffect(() => {
@@ -49,6 +57,24 @@ export function useInfoPanels() {
       chrome.tabs.sendMessage(tab.id, { type: "GET_FEEDS" }, (response) => {
         if (chrome.runtime.lastError) return
         if (response?.feeds) setFeeds(response.feeds)
+      })
+
+      // Login detection
+      chrome.tabs.sendMessage(tab.id, { type: "GET_LOGIN_INFO" }, (response) => {
+        if (chrome.runtime.lastError) return
+        if (response) {
+          chrome.runtime.sendMessage({ type: "GET_LOGIN_PREFS" }, (prefsResponse) => {
+            if (chrome.runtime.lastError) return
+            const prefs = prefsResponse?.prefs || []
+            const saved = prefs.find((p: any) => p.domain === response.hostname)
+            setLoginInfo({
+              hostname: response.hostname,
+              hasForm: response.hasForm,
+              socials: response.socials,
+              savedProvider: saved?.provider
+            })
+          })
+        }
       })
 
       // Site IP
@@ -81,7 +107,7 @@ export function useInfoPanels() {
     setActivePanel((cur) => (cur === panel ? null : panel))
   }
 
-  return { techs, userIp, siteIp, feeds, activePanel, toggle }
+  return { techs, userIp, siteIp, feeds, loginInfo, setLoginInfo, activePanel, toggle }
 }
 
 // --- Icon Buttons ---
@@ -222,6 +248,77 @@ export function RssPanel({ feeds, onCopy }: { feeds: FeedInfo[]; onCopy: (text: 
         </div>
       ) : (
         <div className="px-3 py-3 text-xs text-fg/30 text-center">No RSS/Atom feeds found on this page</div>
+      )}
+    </div>
+  )
+}
+
+export function LoginButton({ active, hasLogin, onClick }: { active: boolean; hasLogin: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} title="Auto-login"
+      className={`p-1.5 rounded transition-colors relative ${active ? "bg-chart-2/20 text-chart-2" : hasLogin ? "text-chart-2/60 hover:text-chart-2 hover:bg-accent" : "text-fg/60 hover:text-fg hover:bg-accent"}`}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.78 7.78 5.5 5.5 0 0 1 7.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+      </svg>
+      {hasLogin && !active && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-chart-2" />}
+    </button>
+  )
+}
+
+export function LoginPanel({ loginInfo, onSave, onRemove }: {
+  loginInfo: LoginInfo | null
+  onSave: (provider: string, selector: string) => void
+  onRemove: () => void
+}) {
+  if (!loginInfo) {
+    return (
+      <div className="border-b border-border px-3 py-3 text-xs text-fg/30 text-center">
+        No login form detected on this page
+      </div>
+    )
+  }
+
+  return (
+    <div className="border-b border-border px-3 py-2.5 space-y-2">
+      <p className="text-[10px] text-fg/30 uppercase tracking-wider">Auto-Login · {loginInfo.hostname}</p>
+
+      {loginInfo.savedProvider && (
+        <div className="flex items-center justify-between p-2 rounded bg-chart-2/10 border border-chart-2/20">
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-chart-2/20 text-chart-2 font-medium">SAVED</span>
+            <span className="text-xs text-fg">Auto-signs in with {loginInfo.savedProvider}</span>
+          </div>
+          <button onClick={onRemove} className="text-[10px] text-fg/30 hover:text-destructive transition-colors">Remove</button>
+        </div>
+      )}
+
+      {loginInfo.socials.length > 0 && (
+        <div>
+          <p className="text-[11px] text-fg/40 mb-1.5">{loginInfo.savedProvider ? "Other options" : "Social sign-in detected"}:</p>
+          <div className="space-y-1">
+            {loginInfo.socials.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => onSave(s.provider, s.selector)}
+                className={`w-full flex items-center justify-between p-2 rounded text-left transition-colors ${
+                  loginInfo.savedProvider === s.provider ? "bg-card border border-chart-2/30" : "bg-card/50 hover:bg-card border border-border"
+                }`}>
+                <span className="text-xs text-fg">{s.provider}</span>
+                <span className="text-[10px] text-fg/30">
+                  {loginInfo.savedProvider === s.provider ? "Active" : "Remember & sign in"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {loginInfo.hasForm && !loginInfo.socials.length && !loginInfo.savedProvider && (
+        <p className="text-xs text-fg/40">Login form detected — password manager autofill will trigger automatically.</p>
+      )}
+
+      {!loginInfo.hasForm && !loginInfo.socials.length && (
+        <p className="text-xs text-fg/30">No login options detected on this page.</p>
       )}
     </div>
   )

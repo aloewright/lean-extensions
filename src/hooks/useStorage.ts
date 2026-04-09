@@ -113,9 +113,13 @@ export function useLinks() {
     await save(links.filter((l) => l.id !== id))
   }
 
+  const updateLink = async (id: string, updates: Partial<CollectedLink>) => {
+    await save(links.map((l) => (l.id === id ? { ...l, ...updates } : l)))
+  }
+
   const clearLinks = async () => {
     await save([])
   }
 
-  return { links, addLink, removeLink, clearLinks }
+  return { links, addLink, removeLink, updateLink, clearLinks }
 }

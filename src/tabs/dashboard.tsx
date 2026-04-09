@@ -27,7 +27,7 @@ function Dashboard() {
   const { settings, update: updateSettings } = useSettings()
   const { profiles, addProfile, removeProfile, updateProfile } = useProfiles()
   const { groups, addGroup, removeGroup, toggleGroup } = useGroups()
-  const { links, addLink, removeLink, clearLinks } = useLinks()
+  const { links, addLink, removeLink, updateLink, clearLinks } = useLinks()
 
   return (
     <div className="h-screen flex bg-bg text-fg font-sans">
@@ -107,6 +107,7 @@ function Dashboard() {
             links={links}
             onAdd={addLink}
             onRemove={removeLink}
+            onUpdate={updateLink}
             onClear={clearLinks}
             settings={settings}
             onUpdateSettings={updateSettings}

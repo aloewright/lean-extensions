@@ -89,12 +89,8 @@ function Popup() {
       )}
 
       {/* Header */}
-      <div className="p-3 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h1 className="text-sm font-semibold tracking-tight">Lean Extensions</h1>
-          <span className="text-xs text-fg/40">{enabledCount}/{extensions.length}</span>
-        </div>
-        <div className="flex items-center gap-1">
+      <div className="px-2 py-2 border-b border-border flex items-center gap-1">
+        <span className="text-[10px] text-fg/30 mr-auto">{enabledCount}/{extensions.length}</span>
           <NetworkButton active={info.activePanel === "network"} hasData={!!info.userIp} onClick={() => info.toggle("network")} />
           <TechButton active={info.activePanel === "tech"} count={info.techs.length} onClick={() => info.toggle("tech")} />
           <RssButton active={info.activePanel === "rss"} count={info.feeds.length} onClick={() => info.toggle("rss")} />
@@ -126,7 +122,6 @@ function Popup() {
               <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
             </svg>
           </button>
-        </div>
       </div>
 
       {/* Info Panels */}

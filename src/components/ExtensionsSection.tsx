@@ -47,15 +47,28 @@ export function ExtensionsSection({
     })
   }
 
+  const [deleting, setDeleting] = useState(false)
+
   const deleteSelected = async () => {
-    if (selected.size === 0) return
-    const names = [...selected].map((id) => extensions.find((e) => e.id === id)?.name).filter(Boolean)
-    if (!confirm(`Uninstall ${selected.size} extension${selected.size > 1 ? "s" : ""}?\n\n${names.join("\n")}`)) return
-    for (const id of selected) {
-      try { await chrome.management.uninstall(id) } catch {}
+    if (selected.size === 0 || deleting) return
+    setDeleting(true)
+    const ids = [...selected]
+    let removed = 0
+    // Uninstall one at a time — each shows a browser confirmation dialog
+    for (const id of ids) {
+      try {
+        await chrome.management.uninstall(id, { showConfirmDialog: true })
+        removed++
+        setSelected((prev) => { const next = new Set(prev); next.delete(id); return next })
+      } catch {
+        // User cancelled this one — keep going with the rest
+      }
     }
-    setSelected(new Set())
-    setSelectMode(false)
+    setDeleting(false)
+    if (removed === ids.length) {
+      setSelected(new Set())
+      setSelectMode(false)
+    }
   }
 
   const selectAll = () => {
@@ -230,9 +243,9 @@ export function ExtensionsSection({
           <div className="flex-1" />
           <button onClick={selectAll} className="text-[11px] py-1 px-2.5 rounded bg-accent hover:bg-accent/80 text-fg/60 transition-colors">Select All</button>
           <button onClick={() => setSelected(new Set())} className="text-[11px] py-1 px-2.5 rounded bg-accent hover:bg-accent/80 text-fg/60 transition-colors">Clear</button>
-          <button onClick={deleteSelected} disabled={selected.size === 0}
+          <button onClick={deleteSelected} disabled={selected.size === 0 || deleting}
             className="text-[11px] py-1 px-3 rounded bg-destructive/20 text-destructive hover:bg-destructive/30 disabled:opacity-30 transition-colors">
-            Uninstall ({selected.size})
+            {deleting ? `Uninstalling (${selected.size} left)...` : `Uninstall (${selected.size})`}
           </button>
         </div>
       )}

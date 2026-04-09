@@ -39,6 +39,7 @@ export interface Settings {
   alwaysEnabled: string[]
   activeProfileId?: string
   leanMode?: boolean
+  autoOffloadDays?: number
 }
 
 export interface StorageSchema {

@@ -120,7 +120,7 @@ function Dashboard() {
         {section === "cookies" && <CookiesSection />}
         {section === "capture" && <CaptureSection />}
         {section === "settings" && (
-          <SettingsSection settings={settings} extensions={extensions} onUpdate={updateSettings} />
+          <SettingsSection settings={settings} extensions={extensions} lastUsed={lastUsed} onUpdate={updateSettings} />
         )}
       </main>
     </div>

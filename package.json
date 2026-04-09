@@ -37,7 +37,8 @@
       "downloads",
       "contextMenus",
       "cookies",
-      "browsingData"
+      "browsingData",
+      "alarms"
     ],
     "host_permissions": [
       "https://notebooklm.google.com/*",

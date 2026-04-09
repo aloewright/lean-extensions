@@ -1,4 +1,4 @@
-import { getLinks, getSettings, setLinks, setSettings, touchExtension } from "./storage"
+import { getLinks, getLastUsed, getSettings, setLinks, setSettings, touchExtension } from "./storage"
 import type { CollectedLink } from "./types"
 
 // In-memory cache for tech detections per hostname
@@ -196,6 +196,35 @@ async function switchProfile(extensionIds: string[], alwaysEnabled: string[]) {
   )
   await Promise.all(enablePromises)
 }
+
+// Auto-offload: disable extensions not used in X days
+async function checkAutoOffload() {
+  const settings = await getSettings()
+  const days = settings.autoOffloadDays
+  if (!days || days <= 0) return
+
+  const lastUsed = await getLastUsed()
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
+  const all = await chrome.management.getAll()
+  const exts = all.filter(
+    (e) => e.type === "extension" && e.id !== chrome.runtime.id && e.mayDisable && e.enabled
+  )
+
+  for (const ext of exts) {
+    if (settings.alwaysEnabled.includes(ext.id)) continue
+    const lastUsedDate = lastUsed[ext.id]
+    if (!lastUsedDate || new Date(lastUsedDate).getTime() < cutoff) {
+      await chrome.management.setEnabled(ext.id, false)
+    }
+  }
+}
+
+// Run offload check on startup and every 6 hours
+checkAutoOffload()
+chrome.alarms.create("auto-offload", { periodInMinutes: 360 })
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "auto-offload") checkAutoOffload()
+})
 
 // DNS resolution via public DNS-over-HTTPS
 async function resolveHostname(hostname: string): Promise<string | null> {

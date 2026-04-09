@@ -233,6 +233,17 @@ export function ExtensionsSection({
                   </svg>
                 </button>
                 <button
+                  onClick={() => {
+                    const crxUrl = `https://clients2.google.com/service/update2/crx?response=redirect&prodversion=130.0&acceptformat=crx2,crx3&x=id%3D${ext.id}%26uc`
+                    chrome.tabs.create({ url: `https://www.virustotal.com/gui/search/${encodeURIComponent(crxUrl)}` })
+                  }}
+                  title="Scan with VirusTotal"
+                  className="p-1.5 rounded text-fg/20 opacity-0 group-hover:opacity-100 hover:text-chart-2 transition-all">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                </button>
+                <button
                   onClick={() => { if (confirm(`Uninstall ${ext.name}?`)) onUninstall(ext.id) }}
                   className="p-1.5 rounded text-fg/20 opacity-0 group-hover:opacity-100 hover:text-destructive transition-all">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

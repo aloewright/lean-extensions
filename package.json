@@ -38,6 +38,32 @@
     ],
     "host_permissions": [
       "https://notebooklm.google.com/*"
-    ]
+    ],
+    "commands": {
+      "toggle-all-off": {
+        "suggested_key": {
+          "default": "Alt+Shift+D"
+        },
+        "description": "Disable all extensions (except pinned)"
+      },
+      "toggle-all-on": {
+        "suggested_key": {
+          "default": "Alt+Shift+E"
+        },
+        "description": "Enable all extensions"
+      },
+      "save-link": {
+        "suggested_key": {
+          "default": "Alt+Shift+S"
+        },
+        "description": "Save current page link"
+      },
+      "open-dashboard": {
+        "suggested_key": {
+          "default": "Alt+Shift+L"
+        },
+        "description": "Open Lean Extensions dashboard"
+      }
+    }
   }
 }

@@ -66,9 +66,16 @@ async function saveLink(url: string, title: string) {
 
 function detectTags(url: string): string[] {
   const tags: string[] = []
-  if (url.includes("youtube.com") || url.includes("youtu.be")) tags.push("youtube")
-  if (url.includes("github.com")) tags.push("github")
-  if (url.includes("arxiv.org")) tags.push("research")
+  const u = url.toLowerCase()
+  if (u.includes("youtube.com") || u.includes("youtu.be")) tags.push("youtube")
+  if (u.includes("github.com")) tags.push("github")
+  if (u.includes("arxiv.org") || u.includes("scholar.google")) tags.push("research")
+  if (u.includes("stackoverflow.com") || u.includes("stackexchange.com")) tags.push("stackoverflow")
+  if (u.includes("docs.google.com") || u.includes("notion.so")) tags.push("docs")
+  if (u.includes("twitter.com") || u.includes("x.com") || u.includes("bsky.app")) tags.push("social")
+  if (u.includes("reddit.com")) tags.push("reddit")
+  if (u.includes("medium.com") || u.includes("dev.to") || u.includes("hashnode.dev")) tags.push("blog")
+  if (u.includes("npmjs.com") || u.includes("pypi.org") || u.includes("crates.io")) tags.push("package")
   return tags
 }
 
@@ -146,5 +153,40 @@ async function switchProfile(extensionIds: string[], alwaysEnabled: string[]) {
   )
   await Promise.all(enablePromises)
 }
+
+// Keyboard shortcuts
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === "toggle-all-off") {
+    const settings = await getSettings()
+    const all = await chrome.management.getAll()
+    const exts = all.filter(
+      (e) => e.type === "extension" && e.id !== chrome.runtime.id && e.mayDisable
+    )
+    await Promise.all(
+      exts
+        .filter((e) => !settings.alwaysEnabled.includes(e.id) && e.enabled)
+        .map((e) => chrome.management.setEnabled(e.id, false))
+    )
+  }
+
+  if (command === "toggle-all-on") {
+    const all = await chrome.management.getAll()
+    const exts = all.filter(
+      (e) => e.type === "extension" && e.id !== chrome.runtime.id && e.mayDisable
+    )
+    await Promise.all(exts.map((e) => chrome.management.setEnabled(e.id, true)))
+  }
+
+  if (command === "save-link") {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (tab?.url && tab?.title) {
+      await saveLink(tab.url, tab.title)
+    }
+  }
+
+  if (command === "open-dashboard") {
+    chrome.tabs.create({ url: chrome.runtime.getURL("tabs/dashboard.html"), pinned: true })
+  }
+})
 
 export {}

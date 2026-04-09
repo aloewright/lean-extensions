@@ -136,17 +136,11 @@ async function capturePdf(tabId: number) {
     })
     await chrome.debugger.detach({ tabId })
 
-    const byteCharacters = atob((result as { data: string }).data)
-    const byteNumbers = new Array(byteCharacters.length)
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i)
-    }
-    const byteArray = new Uint8Array(byteNumbers)
-    const blob = new Blob([byteArray], { type: "application/pdf" })
-    const url = URL.createObjectURL(blob)
+    const base64 = (result as { data: string }).data
+    const dataUrl = `data:application/pdf;base64,${base64}`
 
     await chrome.downloads.download({
-      url,
+      url: dataUrl,
       filename: `page-${Date.now()}.pdf`,
       saveAs: true
     })

@@ -165,7 +165,11 @@ function Popup() {
       {/* Info Panels */}
       {info.activePanel === "network" && <NetworkPanel userIp={info.userIp} siteIp={info.siteIp} onCopy={copyAndToast} />}
       {info.activePanel === "tech" && <TechPanel techs={info.techs} />}
-      {info.activePanel === "rss" && <RssPanel feeds={info.feeds} onCopy={copyAndToast} />}
+      {info.activePanel === "rss" && <RssPanel feeds={info.feeds} onCopy={copyAndToast} onSaveFeed={(f) => {
+        chrome.runtime.sendMessage({ type: "CLOUDOS_SAVE_FEED", url: f.url, title: f.title, type_: f.type }, (res) => {
+          showToast(res?.ok ? `Saved ${f.title || 'feed'}` : "Save failed")
+        })
+      }} />}
       {showRecord && (
         <RecordPanel onSave={(blob, filename) => {
           // Convert blob to base64 and upload to CloudOS R2

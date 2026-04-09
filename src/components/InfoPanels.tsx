@@ -247,7 +247,7 @@ export function TechPanel({ techs }: { techs: TechInfo[] }) {
   )
 }
 
-export function RssPanel({ feeds, onCopy }: { feeds: FeedInfo[]; onCopy: (text: string, label: string) => void }) {
+export function RssPanel({ feeds, onCopy, onSaveFeed }: { feeds: FeedInfo[]; onCopy: (text: string, label: string) => void; onSaveFeed?: (feed: FeedInfo) => void }) {
   return (
     <div className="border-b border-border">
       {feeds.length > 0 ? (
@@ -257,18 +257,23 @@ export function RssPanel({ feeds, onCopy }: { feeds: FeedInfo[]; onCopy: (text: 
             <div key={i} className="flex items-center gap-2 py-0.5 group">
               <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-400 uppercase font-medium flex-shrink-0">{f.type}</span>
               <span className="text-xs text-fg truncate flex-1" title={f.title}>{f.title || f.url}</span>
+              {onSaveFeed && (
+                <button
+                  onClick={() => onSaveFeed(f)}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-chart-1/15 text-chart-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 hover:bg-chart-1/25">
+                  Save
+                </button>
+              )}
               <CopyBtn onClick={() => onCopy(f.url, "Feed URL copied")} />
-              <a
-                href={f.url}
-                target="_blank"
-                rel="noopener"
-                className="text-fg/20 hover:text-chart-1 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
-              </a>
             </div>
           ))}
+          {onSaveFeed && feeds.length > 1 && (
+            <button
+              onClick={() => feeds.forEach((f) => onSaveFeed(f))}
+              className="w-full text-[10px] py-1 mt-1 rounded bg-chart-1/10 text-chart-1 hover:bg-chart-1/20 transition-colors">
+              Save all {feeds.length} feeds
+            </button>
+          )}
         </div>
       ) : (
         <div className="px-3 py-3 text-xs text-fg/30 text-center">No RSS/Atom feeds found on this page</div>

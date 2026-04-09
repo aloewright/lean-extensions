@@ -110,6 +110,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true
   }
 
+  if (message.type === "CLOUDOS_SAVE_FEED") {
+    (async () => {
+      try {
+        const res = await fetch("https://pdx.software/api/feeds", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: message.url, title: message.title, type: message.type_ }),
+        })
+        sendResponse({ ok: res.ok })
+      } catch {
+        sendResponse({ ok: false })
+      }
+    })()
+    return true
+  }
+
   if (message.type === "CLOUDOS_SAVE_PAGE") {
     saveNote(message.title, message.html, message.text).then((result) => {
       sendResponse({ ok: !!result, id: result?.id })

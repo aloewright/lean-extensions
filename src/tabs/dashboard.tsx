@@ -53,7 +53,7 @@ function Dashboard() {
             </svg>
           </button>
         </div>
-        <nav className="flex-1 py-2">
+        <nav className="flex-1 py-2 flex flex-col">
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
@@ -69,6 +69,15 @@ function Dashboard() {
               {sidebarOpen && <span>{item.label}</span>}
             </button>
           ))}
+          <div className="flex-1" />
+          <button
+            onClick={() => chrome.tabs.create({ url: "brave://extensions" })}
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-fg/30 hover:text-fg/50 hover:bg-card/30 transition-colors">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="flex-shrink-0">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+            {sidebarOpen && <span>Brave Extensions</span>}
+          </button>
         </nav>
       </aside>
 

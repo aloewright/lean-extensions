@@ -1,0 +1,43 @@
+{
+  "name": "lean-extensions",
+  "displayName": "Lean Extensions",
+  "version": "0.1.0",
+  "description": "Keep your browser lean and fast. Manage extensions, collect links, capture pages.",
+  "author": "aloe",
+  "scripts": {
+    "dev": "plasmo dev",
+    "build": "plasmo build",
+    "package": "plasmo package"
+  },
+  "dependencies": {
+    "@plasmohq/storage": "^1.15.0",
+    "plasmo": "0.90.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@plasmohq/prettier-plugin-sort-imports": "4.0.1",
+    "@types/chrome": "^0.0.287",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "prettier": "3.2.5",
+    "tailwindcss": "^3.4.17",
+    "typescript": "5.7.3"
+  },
+  "manifest": {
+    "permissions": [
+      "management",
+      "tabs",
+      "activeTab",
+      "storage",
+      "debugger",
+      "clipboardWrite",
+      "downloads"
+    ],
+    "host_permissions": [
+      "https://notebooklm.google.com/*"
+    ]
+  }
+}

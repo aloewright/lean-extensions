@@ -114,7 +114,7 @@ function Dashboard() {
         )}
         {section === "capture" && <CaptureSection />}
         {section === "settings" && (
-          <SettingsSection settings={settings} onUpdate={updateSettings} />
+          <SettingsSection settings={settings} extensions={extensions} onUpdate={updateSettings} />
         )}
       </main>
     </div>

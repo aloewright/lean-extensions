@@ -13,6 +13,7 @@ interface Props {
 export function LinksSection({ links, onAdd, onRemove, onClear, settings, onUpdateSettings }: Props) {
   const [urlInput, setUrlInput] = useState("")
   const [search, setSearch] = useState("")
+  const [copied, setCopied] = useState(false)
 
   const filtered = links.filter((l) =>
     l.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -48,6 +49,18 @@ export function LinksSection({ links, onAdd, onRemove, onClear, settings, onUpda
             />
             Append to last notebook
           </label>
+          <button
+            onClick={() => {
+              const md = (filtered.length ? filtered : links)
+                .map((l) => `- [${l.title}](${l.url})`)
+                .join("\n")
+              navigator.clipboard.writeText(md)
+              setCopied(true)
+              setTimeout(() => setCopied(false), 2000)
+            }}
+            className="text-xs py-1.5 px-3 rounded bg-accent hover:bg-accent/80 transition-colors">
+            {copied ? "Copied!" : "Copy as Markdown"}
+          </button>
           <button onClick={sendToNotebook} className="text-xs py-1.5 px-3 rounded bg-chart-5/20 text-chart-5 hover:bg-chart-5/30 transition-colors">
             Send to NotebookLM
           </button>

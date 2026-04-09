@@ -11,14 +11,28 @@ interface Props {
   onUpdateSettings: (u: Partial<Settings>) => void
 }
 
+type SortBy = "name" | "enabled" | "type"
+type FilterBy = "all" | "enabled" | "disabled" | "pinned" | "dev"
+
 export function ExtensionsSection({
   extensions, loading, settings, onToggle, onUninstall, onToggleAll, onUpdateSettings
 }: Props) {
   const [search, setSearch] = useState("")
-  const filtered = extensions.filter((e) =>
+  const [sortBy, setSortBy] = useState<SortBy>("name")
+  const [filterBy, setFilterBy] = useState<FilterBy>("all")
+
+  let filtered = extensions.filter((e) =>
     e.name.toLowerCase().includes(search.toLowerCase()) ||
     e.description.toLowerCase().includes(search.toLowerCase())
   )
+
+  if (filterBy === "enabled") filtered = filtered.filter((e) => e.enabled)
+  else if (filterBy === "disabled") filtered = filtered.filter((e) => !e.enabled)
+  else if (filterBy === "pinned") filtered = filtered.filter((e) => settings.alwaysEnabled?.includes(e.id))
+  else if (filterBy === "dev") filtered = filtered.filter((e) => e.installType === "development")
+
+  if (sortBy === "enabled") filtered = [...filtered].sort((a, b) => Number(b.enabled) - Number(a.enabled))
+  else if (sortBy === "type") filtered = [...filtered].sort((a, b) => a.installType.localeCompare(b.installType))
   const enabledCount = extensions.filter((e) => e.enabled).length
   const devCount = extensions.filter((e) => e.installType === "development").length
   const pinnedCount = settings.alwaysEnabled?.length || 0
@@ -109,6 +123,34 @@ export function ExtensionsSection({
           className="text-xs py-2 px-4 rounded bg-chart-1/20 text-chart-1 hover:bg-chart-1/30 transition-colors whitespace-nowrap">
           Search Web Store
         </button>
+      </div>
+
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex gap-1">
+          {(["all", "enabled", "disabled", "pinned", "dev"] as FilterBy[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilterBy(f)}
+              className={`text-[11px] py-1 px-2.5 rounded capitalize transition-colors ${
+                filterBy === f ? "bg-chart-1/20 text-chart-1" : "bg-accent/50 text-fg/40 hover:text-fg/60"
+              }`}>
+              {f}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 ml-auto">
+          <span className="text-[10px] text-fg/30">Sort:</span>
+          {(["name", "enabled", "type"] as SortBy[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => setSortBy(s)}
+              className={`text-[11px] py-1 px-2 rounded capitalize transition-colors ${
+                sortBy === s ? "bg-accent text-fg" : "text-fg/30 hover:text-fg/50"
+              }`}>
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (

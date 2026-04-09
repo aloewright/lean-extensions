@@ -16,11 +16,13 @@ const SHORTCUTS = [
 
 const OFFLOAD_OPTIONS = [
   { value: 0, label: "Off" },
+  { value: 1/24, label: "1hr" },
+  { value: 8/24, label: "8hr" },
+  { value: 1, label: "24hr" },
+  { value: 3, label: "3 days" },
   { value: 7, label: "7 days" },
   { value: 14, label: "14 days" },
   { value: 30, label: "30 days" },
-  { value: 60, label: "60 days" },
-  { value: 90, label: "90 days" },
 ]
 
 const DELETE_OPTIONS = [
@@ -28,8 +30,7 @@ const DELETE_OPTIONS = [
   { value: 30, label: "30 days" },
   { value: 60, label: "60 days" },
   { value: 90, label: "90 days" },
-  { value: 180, label: "180 days" },
-  { value: 365, label: "1 year" },
+  { value: 120, label: "120 days" },
 ]
 
 function relativeDate(iso: string): string {

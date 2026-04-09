@@ -239,7 +239,7 @@ async function checkAutoOffload() {
 
 // Run offload check on startup and every 6 hours
 checkAutoOffload()
-chrome.alarms.create("auto-offload", { periodInMinutes: 360 })
+chrome.alarms.create("auto-offload", { periodInMinutes: 30 })
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "auto-offload") checkAutoOffload()
 })

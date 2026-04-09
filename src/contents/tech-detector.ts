@@ -348,11 +348,94 @@ function detectFeeds(): { url: string; title: string; type: "rss" | "atom" | "js
     feeds.push({ url, title: el.getAttribute("title") || "", type: feedType })
   })
 
-  // Check common feed paths if no autodiscovery found
+  // Platform-specific feed detection
+  const origin = window.location.origin
+  const hostname = window.location.hostname
+  const pathname = window.location.pathname
+
+  // Substack: always has /feed
+  if (hostname.includes("substack.com") || document.querySelector('meta[property="article:publisher"][content*="substack"]') || document.querySelector('script[src*="substack"]')) {
+    const feedUrl = `${origin}/feed`
+    if (!seen.has(feedUrl)) {
+      seen.add(feedUrl)
+      const name = document.querySelector('meta[property="og:site_name"]')?.getAttribute("content") || hostname
+      feeds.push({ url: feedUrl, title: `${name} (Substack)`, type: "rss" })
+    }
+  }
+
+  // Medium: /feed path or medium.com/feed/@user
+  if (hostname.includes("medium.com") || document.querySelector('meta[property="al:android:package"][content="com.medium.reader"]')) {
+    const ogUrl = document.querySelector('meta[property="og:url"]')?.getAttribute("content") || ""
+    if (hostname === "medium.com") {
+      // medium.com/@user or medium.com/publication
+      const match = pathname.match(/^\/@([^/]+)/) || pathname.match(/^\/([^/@][^/]+)/)
+      if (match) {
+        const feedUrl = `https://medium.com/feed/${match[0]}`
+        if (!seen.has(feedUrl)) { seen.add(feedUrl); feeds.push({ url: feedUrl, title: `Medium ${match[0]}`, type: "rss" }) }
+      }
+    } else {
+      // Custom domain on Medium
+      const feedUrl = `${origin}/feed`
+      if (!seen.has(feedUrl)) { seen.add(feedUrl); feeds.push({ url: feedUrl, title: `${hostname} (Medium)`, type: "rss" }) }
+    }
+  }
+
+  // WordPress: /feed/ is standard
+  if (document.querySelector('meta[name="generator"][content*="WordPress"]') || (window as any).wp) {
+    const feedUrl = `${origin}/feed/`
+    if (!seen.has(feedUrl)) { seen.add(feedUrl); feeds.push({ url: feedUrl, title: `${hostname} (WordPress)`, type: "rss" }) }
+  }
+
+  // Ghost: standard /rss/
+  if (document.querySelector('meta[name="generator"][content*="Ghost"]') || (window as any).ghost) {
+    const feedUrl = `${origin}/rss/`
+    if (!seen.has(feedUrl)) { seen.add(feedUrl); feeds.push({ url: feedUrl, title: `${hostname} (Ghost)`, type: "rss" }) }
+  }
+
+  // Blogger/Blogspot
+  if (hostname.includes("blogspot.com") || hostname.includes("blogger.com")) {
+    const feedUrl = `${origin}/feeds/posts/default`
+    if (!seen.has(feedUrl)) { seen.add(feedUrl); feeds.push({ url: feedUrl, title: `${hostname} (Blogger)`, type: "atom" }) }
+  }
+
+  // YouTube: channel/playlist feeds
+  if (hostname.includes("youtube.com")) {
+    const channelId = document.querySelector('meta[itemprop="channelId"]')?.getAttribute("content")
+      || document.querySelector('link[rel="canonical"]')?.getAttribute("href")?.match(/channel\/(UC[a-zA-Z0-9_-]+)/)?.[1]
+    if (channelId) {
+      const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`
+      if (!seen.has(feedUrl)) { seen.add(feedUrl); feeds.push({ url: feedUrl, title: "YouTube Channel", type: "atom" }) }
+    }
+    const playlistMatch = window.location.href.match(/list=([a-zA-Z0-9_-]+)/)
+    if (playlistMatch) {
+      const feedUrl = `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistMatch[1]}`
+      if (!seen.has(feedUrl)) { seen.add(feedUrl); feeds.push({ url: feedUrl, title: "YouTube Playlist", type: "atom" }) }
+    }
+  }
+
+  // GitHub: repo releases/commits
+  if (hostname === "github.com") {
+    const repoMatch = pathname.match(/^\/([^/]+\/[^/]+)/)
+    if (repoMatch) {
+      const repo = repoMatch[1]
+      const releaseFeed = `https://github.com/${repo}/releases.atom`
+      const commitFeed = `https://github.com/${repo}/commits.atom`
+      if (!seen.has(releaseFeed)) { seen.add(releaseFeed); feeds.push({ url: releaseFeed, title: `${repo} Releases`, type: "atom" }) }
+      if (!seen.has(commitFeed)) { seen.add(commitFeed); feeds.push({ url: commitFeed, title: `${repo} Commits`, type: "atom" }) }
+    }
+  }
+
+  // Reddit: append .rss to any reddit URL
+  if (hostname.includes("reddit.com")) {
+    const subredditMatch = pathname.match(/^\/r\/([^/]+)/)
+    if (subredditMatch) {
+      const feedUrl = `https://www.reddit.com/r/${subredditMatch[1]}/.rss`
+      if (!seen.has(feedUrl)) { seen.add(feedUrl); feeds.push({ url: feedUrl, title: `r/${subredditMatch[1]}`, type: "rss" }) }
+    }
+  }
+
+  // Fallback: scan page links for feed URLs
   if (feeds.length === 0) {
-    const commonPaths = ["/feed", "/rss", "/feed.xml", "/rss.xml", "/atom.xml", "/index.xml", "/feeds/posts/default"]
-    const origin = window.location.origin
-    // Check for links on the page that look like feeds
     const anchors = document.querySelectorAll("a[href]")
     anchors.forEach((a) => {
       const href = (a as HTMLAnchorElement).href

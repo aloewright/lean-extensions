@@ -6,16 +6,14 @@ async function getConfig(): Promise<{ apiUrl: string; token: string }> {
 }
 
 function headers(token: string): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    "X-CloudOS-Service-Token": token,
-  }
+  const h: HeadersInit = { "Content-Type": "application/json" }
+  if (token) h["X-CloudOS-Service-Token"] = token
+  return h
 }
 
 // Save a note (page HTML, text, etc.)
 export async function saveNote(title: string, contentHtml: string, contentText: string): Promise<{ id: string } | null> {
   const config = await getConfig()
-  if (!config.token) return null
   try {
     const res = await fetch(`${config.apiUrl}/notes`, {
       method: "POST",
@@ -29,7 +27,8 @@ export async function saveNote(title: string, contentHtml: string, contentText: 
     })
     if (!res.ok) return null
     return await res.json()
-  } catch {
+  } catch (err) {
+    console.error("CloudOS saveNote failed:", err)
     return null
   }
 }
@@ -37,18 +36,20 @@ export async function saveNote(title: string, contentHtml: string, contentText: 
 // Upload a file (image, PDF) to R2 via media endpoint
 export async function uploadMedia(file: Blob, filename: string): Promise<{ key: string; url: string } | null> {
   const config = await getConfig()
-  if (!config.token) return null
   try {
     const form = new FormData()
     form.append("file", file, filename)
+    const h: HeadersInit = {}
+    if (config.token) h["X-CloudOS-Service-Token"] = config.token
     const res = await fetch(`${config.apiUrl}/media/upload`, {
       method: "POST",
-      headers: { "X-CloudOS-Service-Token": config.token },
+      headers: h,
       body: form,
     })
     if (!res.ok) return null
     return await res.json()
-  } catch {
+  } catch (err) {
+    console.error("CloudOS uploadMedia failed:", err)
     return null
   }
 }
@@ -56,7 +57,6 @@ export async function uploadMedia(file: Blob, filename: string): Promise<{ key: 
 // Save a highlight
 export async function saveHighlight(text: string, url: string, siteName: string): Promise<{ id: string } | null> {
   const config = await getConfig()
-  if (!config.token) return null
   try {
     const res = await fetch(`${config.apiUrl}/highlights`, {
       method: "POST",
@@ -65,7 +65,8 @@ export async function saveHighlight(text: string, url: string, siteName: string)
     })
     if (!res.ok) return null
     return await res.json()
-  } catch {
+  } catch (err) {
+    console.error("CloudOS saveHighlight failed:", err)
     return null
   }
 }

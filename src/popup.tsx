@@ -128,7 +128,7 @@ function Popup() {
                   html: response.html,
                   text: response.text,
                 }, (result) => {
-                  showToast(result?.ok ? "Saved to CloudOS" : "Failed — check token")
+                  showToast(result?.ok ? "Saved to CloudOS" : "Failed — check CloudOS settings")
                 })
               })
             }} title="Save page to CloudOS"

@@ -4,6 +4,7 @@ import { useExtensions } from "./hooks/useExtensions"
 import { useSettings, useProfiles } from "./hooks/useStorage"
 import { FuzzySearchInput } from "./components/FuzzySearchInput"
 import { useInfoPanels, NetworkButton, TechButton, RssButton, LoginButton, NetworkPanel, TechPanel, RssPanel, LoginPanel } from "./components/InfoPanels"
+import { RecordButton, RecordPanel } from "./components/RecordPanel"
 import { fuzzySearch } from "./utils/fuzzy"
 import type { Profile } from "./types"
 
@@ -13,6 +14,7 @@ function Popup() {
   const { profiles } = useProfiles()
   const [search, setSearch] = useState("")
   const [toast, setToast] = useState<string | null>(null)
+  const [showRecord, setShowRecord] = useState(false)
   const info = useInfoPanels()
 
   const baseList = settings.leanMode
@@ -105,7 +107,8 @@ function Popup() {
           <NetworkButton active={info.activePanel === "network"} hasData={!!info.userIp} onClick={() => info.toggle("network")} />
           <TechButton active={info.activePanel === "tech"} count={info.techs.length} onClick={() => info.toggle("tech")} />
           <RssButton active={info.activePanel === "rss"} count={info.feeds.length} onClick={() => info.toggle("rss")} />
-          <LoginButton active={info.activePanel === "login"} hasLogin={!!(info.loginInfo?.hasForm || info.loginInfo?.socials.length)} onClick={() => info.toggle("login")} />
+          <LoginButton active={info.activePanel === "login"} hasLogin={!!(info.loginInfo?.hasForm || info.loginInfo?.socials.length)} onClick={() => { info.toggle("login"); setShowRecord(false) }} />
+          <RecordButton active={showRecord} onClick={() => { setShowRecord(!showRecord); if (info.activePanel) info.toggle(null) }} />
           <button onClick={saveCurrentLink} title="Save link"
             className="p-1.5 rounded hover:bg-accent text-fg/60 hover:text-fg transition-colors">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -163,6 +166,24 @@ function Popup() {
       {info.activePanel === "network" && <NetworkPanel userIp={info.userIp} siteIp={info.siteIp} onCopy={copyAndToast} />}
       {info.activePanel === "tech" && <TechPanel techs={info.techs} />}
       {info.activePanel === "rss" && <RssPanel feeds={info.feeds} onCopy={copyAndToast} />}
+      {showRecord && (
+        <RecordPanel onSave={(blob, filename) => {
+          // Convert blob to base64 and upload to CloudOS R2
+          const reader = new FileReader()
+          reader.onload = () => {
+            const base64 = (reader.result as string).split(",")[1]
+            chrome.runtime.sendMessage({
+              type: "CLOUDOS_UPLOAD_MEDIA",
+              base64,
+              mimeType: "video/webm",
+              filename,
+            }, (result) => {
+              showToast(result?.ok ? "Uploaded to CloudOS" : "Upload failed")
+            })
+          }
+          reader.readAsDataURL(blob)
+        }} />
+      )}
       {info.activePanel === "login" && (
         <LoginPanel
           loginInfo={info.loginInfo}

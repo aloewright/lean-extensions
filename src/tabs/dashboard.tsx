@@ -7,15 +7,17 @@ import { ProfilesSection } from "../components/ProfilesSection"
 import { GroupsSection } from "../components/GroupsSection"
 import { LinksSection } from "../components/LinksSection"
 import { CaptureSection } from "../components/CaptureSection"
+import { CookiesSection } from "../components/CookiesSection"
 import { SettingsSection } from "../components/SettingsSection"
 
-type Section = "extensions" | "profiles" | "groups" | "links" | "capture" | "settings"
+type Section = "extensions" | "profiles" | "groups" | "links" | "cookies" | "capture" | "settings"
 
 const NAV_ITEMS: { id: Section; label: string; icon: string }[] = [
   { id: "extensions", label: "Extensions", icon: "M20 7h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM10 4h4v3h-4V4z" },
   { id: "profiles", label: "Profiles", icon: "M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" },
   { id: "groups", label: "Groups", icon: "M3 5h18v2H3V5zm0 6h18v2H3v-2zm0 6h18v2H3v-2z" },
   { id: "links", label: "Links", icon: "M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" },
+  { id: "cookies", label: "Cookies", icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" },
   { id: "capture", label: "Capture", icon: "M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" },
   { id: "settings", label: "Settings", icon: "M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" }
 ]
@@ -113,6 +115,7 @@ function Dashboard() {
             onUpdateSettings={updateSettings}
           />
         )}
+        {section === "cookies" && <CookiesSection />}
         {section === "capture" && <CaptureSection />}
         {section === "settings" && (
           <SettingsSection settings={settings} extensions={extensions} onUpdate={updateSettings} />

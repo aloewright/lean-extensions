@@ -21,7 +21,10 @@ export function useExtensions() {
         mayDisable: e.mayDisable,
         type: e.type
       }))
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .sort((a, b) => {
+        if (a.enabled !== b.enabled) return a.enabled ? -1 : 1
+        return a.name.localeCompare(b.name)
+      })
     setExtensions(exts)
     setLoading(false)
   }

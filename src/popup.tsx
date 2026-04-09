@@ -152,10 +152,26 @@ function Popup() {
         </div>
       )}
 
+      {/* Lean Mode Banner */}
+      {settings.leanMode && (
+        <div className="px-3 py-2 bg-chart-2/10 border-b border-chart-2/20 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-chart-2 animate-pulse" />
+            <span className="text-[11px] text-chart-2 font-medium">Lean Mode Active</span>
+            <span className="text-[10px] text-fg/30">Only pinned extensions running</span>
+          </div>
+          <button
+            onClick={() => { toggleAll(true, settings.alwaysEnabled); update({ leanMode: false }); showToast("All extensions restored") }}
+            className="text-[11px] py-0.5 px-2 rounded bg-chart-2/20 text-chart-2 hover:bg-chart-2/30 transition-colors">
+            Restore
+          </button>
+        </div>
+      )}
+
       {/* Quick Actions */}
       <div className="px-3 py-2 border-b border-border flex gap-2">
         <button
-          onClick={() => { toggleAll(true, settings.alwaysEnabled); showToast("All enabled") }}
+          onClick={() => { toggleAll(true, settings.alwaysEnabled); update({ leanMode: false }); showToast("All enabled") }}
           className="flex-1 text-xs py-1.5 px-3 rounded bg-accent hover:bg-accent/80 text-fg transition-colors">
           Enable All
         </button>
@@ -165,9 +181,13 @@ function Popup() {
           Disable All
         </button>
         <button
-          onClick={() => { toggleAll(false, settings.alwaysEnabled); showToast("Lean mode — only pinned active") }}
+          onClick={() => { toggleAll(false, settings.alwaysEnabled); update({ leanMode: true }); showToast("Lean mode on") }}
           title="Disable everything except pinned extensions"
-          className="text-xs py-1.5 px-3 rounded bg-chart-2/20 text-chart-2 hover:bg-chart-2/30 transition-colors whitespace-nowrap">
+          className={`text-xs py-1.5 px-3 rounded whitespace-nowrap transition-colors ${
+            settings.leanMode
+              ? "bg-chart-2/30 text-chart-2 ring-1 ring-chart-2/40"
+              : "bg-chart-2/20 text-chart-2 hover:bg-chart-2/30"
+          }`}>
           Lean
         </button>
       </div>

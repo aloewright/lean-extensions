@@ -38,6 +38,7 @@ export interface Settings {
   lastNotebookUrl?: string
   alwaysEnabled: string[]
   activeProfileId?: string
+  leanMode?: boolean
 }
 
 export interface StorageSchema {

@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import "./style.css"
 import { useExtensions } from "./hooks/useExtensions"
 import { useSettings, useProfiles } from "./hooks/useStorage"
+import { FuzzySearchInput } from "./components/FuzzySearchInput"
+import { fuzzySearch } from "./utils/fuzzy"
 import type { Profile } from "./types"
 
 function Popup() {
@@ -11,9 +13,9 @@ function Popup() {
   const [search, setSearch] = useState("")
   const [toast, setToast] = useState<string | null>(null)
 
-  const filtered = extensions.filter((e) =>
-    e.name.toLowerCase().includes(search.toLowerCase())
-  )
+  const fuzzyResults = fuzzySearch(extensions, search, [(e) => e.name])
+  const filtered = fuzzyResults.map((r) => r.item)
+  const suggestions = search.trim() ? fuzzyResults.slice(0, 5).map((r) => r.item.name) : []
 
   const enabledCount = extensions.filter((e) => e.enabled).length
 
@@ -194,10 +196,10 @@ function Popup() {
 
       {/* Search */}
       <div className="px-3 py-2 border-b border-border">
-        <input
-          type="text"
+        <FuzzySearchInput
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={setSearch}
+          suggestions={suggestions}
           placeholder="Search extensions..."
           className="w-full text-xs py-1.5 px-3 rounded bg-card border border-border text-fg placeholder-fg/30 outline-none focus:border-primary/50 transition-colors"
         />

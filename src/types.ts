@@ -46,6 +46,7 @@ export interface StorageSchema {
   groups: Group[]
   collectedLinks: CollectedLink[]
   settings: Settings
+  extensionLastUsed: Record<string, string>
 }
 
 export const DEFAULT_STORAGE: StorageSchema = {
@@ -55,5 +56,6 @@ export const DEFAULT_STORAGE: StorageSchema = {
   settings: {
     notebookMode: "append",
     alwaysEnabled: []
-  }
+  },
+  extensionLastUsed: {}
 }

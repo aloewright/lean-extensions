@@ -3,6 +3,22 @@ import * as store from "../storage"
 import type { CollectedLink, Group, Profile, Settings } from "../types"
 import { DEFAULT_STORAGE } from "../types"
 
+export function useLastUsed() {
+  const [lastUsed, setLastUsed] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    store.getLastUsed().then(setLastUsed)
+  }, [])
+
+  const touch = async (id: string) => {
+    const next = { ...lastUsed, [id]: new Date().toISOString() }
+    await store.setLastUsed(next)
+    setLastUsed(next)
+  }
+
+  return { lastUsed, touch }
+}
+
 export function useProfiles() {
   const [profiles, setProfiles] = useState<Profile[]>([])
 

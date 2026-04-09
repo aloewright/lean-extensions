@@ -1,7 +1,7 @@
 import { useState } from "react"
 import "../style.css"
 import { useExtensions } from "../hooks/useExtensions"
-import { useGroups, useLinks, useProfiles, useSettings } from "../hooks/useStorage"
+import { useGroups, useLastUsed, useLinks, useProfiles, useSettings } from "../hooks/useStorage"
 import { ExtensionsSection } from "../components/ExtensionsSection"
 import { ProfilesSection } from "../components/ProfilesSection"
 import { GroupsSection } from "../components/GroupsSection"
@@ -30,6 +30,7 @@ function Dashboard() {
   const { profiles, addProfile, removeProfile, updateProfile } = useProfiles()
   const { groups, addGroup, removeGroup, toggleGroup } = useGroups()
   const { links, addLink, removeLink, updateLink, clearLinks } = useLinks()
+  const { lastUsed } = useLastUsed()
 
   return (
     <div className="h-screen flex bg-bg text-fg font-sans">
@@ -78,6 +79,7 @@ function Dashboard() {
             extensions={extensions}
             loading={loading}
             settings={settings}
+            lastUsed={lastUsed}
             onToggle={toggleExtension}
             onUninstall={uninstallExtension}
             onToggleAll={toggleAll}

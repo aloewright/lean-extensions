@@ -44,4 +44,18 @@ export async function setLinks(links: CollectedLink[]): Promise<void> {
   await storage.set("collectedLinks", links)
 }
 
+export async function getLastUsed(): Promise<Record<string, string>> {
+  return await storage.get<Record<string, string>>("extensionLastUsed") ?? {}
+}
+
+export async function setLastUsed(data: Record<string, string>): Promise<void> {
+  await storage.set("extensionLastUsed", data)
+}
+
+export async function touchExtension(extId: string): Promise<void> {
+  const data = await getLastUsed()
+  data[extId] = new Date().toISOString()
+  await setLastUsed(data)
+}
+
 export { storage }

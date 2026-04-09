@@ -1,30 +1,53 @@
 import { useState } from "react"
 import type { ExtensionInfo, Settings } from "../types"
+import { FuzzySearchInput } from "./FuzzySearchInput"
+import { fuzzySearch } from "../utils/fuzzy"
 
 interface Props {
   extensions: ExtensionInfo[]
   loading: boolean
   settings: Settings
+  lastUsed: Record<string, string>
   onToggle: (id: string, enabled: boolean) => void
   onUninstall: (id: string) => void
   onToggleAll: (enabled: boolean, alwaysEnabled: string[]) => void
   onUpdateSettings: (u: Partial<Settings>) => void
 }
 
-type SortBy = "name" | "enabled" | "type"
+type SortBy = "name" | "enabled" | "type" | "recent"
 type FilterBy = "all" | "enabled" | "disabled" | "pinned" | "dev"
 
+function relativeDate(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 30) return `${days}d ago`
+  return new Date(iso).toLocaleDateString()
+}
+
 export function ExtensionsSection({
-  extensions, loading, settings, onToggle, onUninstall, onToggleAll, onUpdateSettings
+  extensions, loading, settings, lastUsed, onToggle, onUninstall, onToggleAll, onUpdateSettings
 }: Props) {
   const [search, setSearch] = useState("")
   const [sortBy, setSortBy] = useState<SortBy>("name")
   const [filterBy, setFilterBy] = useState<FilterBy>("all")
 
-  let filtered = extensions.filter((e) =>
-    e.name.toLowerCase().includes(search.toLowerCase()) ||
-    e.description.toLowerCase().includes(search.toLowerCase())
+  // Fuzzy search
+  const fuzzyResults = fuzzySearch(
+    extensions,
+    search,
+    [(e) => e.name, (e) => e.description]
   )
+  let filtered = fuzzyResults.map((r) => r.item)
+
+  // Suggestions for autocomplete
+  const suggestions = search.trim()
+    ? fuzzyResults.slice(0, 6).map((r) => r.item.name)
+    : []
 
   if (filterBy === "enabled") filtered = filtered.filter((e) => e.enabled)
   else if (filterBy === "disabled") filtered = filtered.filter((e) => !e.enabled)
@@ -33,6 +56,16 @@ export function ExtensionsSection({
 
   if (sortBy === "enabled") filtered = [...filtered].sort((a, b) => Number(b.enabled) - Number(a.enabled))
   else if (sortBy === "type") filtered = [...filtered].sort((a, b) => a.installType.localeCompare(b.installType))
+  else if (sortBy === "recent") {
+    filtered = [...filtered].sort((a, b) => {
+      const aDate = lastUsed[a.id] || ""
+      const bDate = lastUsed[b.id] || ""
+      return bDate.localeCompare(aDate)
+    })
+  } else if (!search.trim()) {
+    // Default name sort preserves enabled-first from the hook
+  }
+
   const enabledCount = extensions.filter((e) => e.enabled).length
   const devCount = extensions.filter((e) => e.installType === "development").length
   const pinnedCount = settings.alwaysEnabled?.length || 0
@@ -108,10 +141,10 @@ export function ExtensionsSection({
       </div>
 
       <div className="flex gap-2 mb-4">
-        <input
-          type="text"
+        <FuzzySearchInput
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={setSearch}
+          suggestions={suggestions}
           placeholder="Search installed extensions..."
           className="flex-1 text-sm py-2 px-3 rounded bg-card border border-border text-fg placeholder-fg/30 outline-none focus:border-primary/50 transition-colors"
         />
@@ -140,7 +173,7 @@ export function ExtensionsSection({
         </div>
         <div className="flex items-center gap-1 ml-auto">
           <span className="text-[10px] text-fg/30">Sort:</span>
-          {(["name", "enabled", "type"] as SortBy[]).map((s) => (
+          {(["name", "enabled", "type", "recent"] as SortBy[]).map((s) => (
             <button
               key={s}
               onClick={() => setSortBy(s)}
@@ -160,6 +193,7 @@ export function ExtensionsSection({
           {filtered.map((ext) => {
             const iconUrl = ext.icons?.length ? ext.icons[ext.icons.length - 1].url : undefined
             const isPinned = settings.alwaysEnabled?.includes(ext.id)
+            const lastUsedDate = lastUsed[ext.id]
             return (
               <div key={ext.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-card/50 transition-colors group">
                 {iconUrl ? (
@@ -176,8 +210,15 @@ export function ExtensionsSection({
                     </span>
                     <span className="text-[10px] text-fg/30">v{ext.version}</span>
                   </div>
-                  <p className="text-xs text-fg/30 truncate">{ext.description}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-fg/30 truncate">{ext.description}</p>
+                  </div>
                 </div>
+                {lastUsedDate && (
+                  <span className="text-[10px] text-fg/20 whitespace-nowrap flex-shrink-0" title={new Date(lastUsedDate).toLocaleString()}>
+                    {relativeDate(lastUsedDate)}
+                  </span>
+                )}
                 <button
                   onClick={() => {
                     const next = isPinned

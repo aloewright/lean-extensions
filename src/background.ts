@@ -1,4 +1,4 @@
-import { getLinks, getSettings, setLinks, setSettings } from "./storage"
+import { getLinks, getSettings, setLinks, setSettings, touchExtension } from "./storage"
 import type { CollectedLink } from "./types"
 
 // Badge: show enabled extension count
@@ -37,9 +37,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 })
 
-chrome.management.onEnabled.addListener(updateBadge)
-chrome.management.onDisabled.addListener(updateBadge)
-chrome.management.onInstalled.addListener(updateBadge)
+chrome.management.onEnabled.addListener((info) => { updateBadge(); touchExtension(info.id) })
+chrome.management.onDisabled.addListener((info) => { updateBadge(); touchExtension(info.id) })
+chrome.management.onInstalled.addListener((info) => { updateBadge(); touchExtension(info.id) })
 chrome.management.onUninstalled.addListener(updateBadge)
 
 // Handle messages from popup and dashboard

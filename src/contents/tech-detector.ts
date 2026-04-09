@@ -160,9 +160,57 @@ if (techs.length > 0) {
   })
 }
 
+// RSS/Atom feed detection
+function detectFeeds(): { url: string; title: string; type: "rss" | "atom" | "json" }[] {
+  const feeds: { url: string; title: string; type: "rss" | "atom" | "json" }[] = []
+  const seen = new Set<string>()
+
+  // Check <link> tags for feed autodiscovery
+  const linkEls = document.querySelectorAll('link[type="application/rss+xml"], link[type="application/atom+xml"], link[type="application/feed+json"], link[type="application/json"][rel="alternate"]')
+  linkEls.forEach((el) => {
+    const href = el.getAttribute("href")
+    if (!href) return
+    const url = new URL(href, window.location.origin).href
+    if (seen.has(url)) return
+    seen.add(url)
+    const type = el.getAttribute("type")
+    let feedType: "rss" | "atom" | "json" = "rss"
+    if (type?.includes("atom")) feedType = "atom"
+    else if (type?.includes("json")) feedType = "json"
+    feeds.push({ url, title: el.getAttribute("title") || "", type: feedType })
+  })
+
+  // Check common feed paths if no autodiscovery found
+  if (feeds.length === 0) {
+    const commonPaths = ["/feed", "/rss", "/feed.xml", "/rss.xml", "/atom.xml", "/index.xml", "/feeds/posts/default"]
+    const origin = window.location.origin
+    // Check for links on the page that look like feeds
+    const anchors = document.querySelectorAll("a[href]")
+    anchors.forEach((a) => {
+      const href = (a as HTMLAnchorElement).href
+      if (seen.has(href)) return
+      const lower = href.toLowerCase()
+      if (lower.includes("/feed") || lower.includes("/rss") || lower.includes("atom.xml") || lower.includes(".rss") || lower.endsWith("/rss/")) {
+        seen.add(href)
+        feeds.push({ url: href, title: (a as HTMLAnchorElement).textContent?.trim() || "Feed", type: "rss" })
+      }
+    })
+  }
+
+  return feeds
+}
+
+const feeds = detectFeeds()
+if (feeds.length > 0) {
+  chrome.runtime.sendMessage({ type: "FEEDS_DETECTED", feeds, hostname: window.location.hostname })
+}
+
 // Listen for requests from popup/dashboard
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "GET_TECH") {
     sendResponse({ techs: detectTechnologies() })
+  }
+  if (message.type === "GET_FEEDS") {
+    sendResponse({ feeds: detectFeeds() })
   }
 })

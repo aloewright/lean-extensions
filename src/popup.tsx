@@ -6,12 +6,32 @@ import { FuzzySearchInput } from "./components/FuzzySearchInput"
 import { fuzzySearch } from "./utils/fuzzy"
 import type { Profile } from "./types"
 
+interface TechInfo {
+  name: string
+  category: string
+  version?: string
+  confidence: string
+}
+
 function Popup() {
   const { extensions, loading, toggleExtension, toggleAll } = useExtensions()
   const { settings, update } = useSettings()
   const { profiles } = useProfiles()
   const [search, setSearch] = useState("")
   const [toast, setToast] = useState<string | null>(null)
+  const [techs, setTechs] = useState<TechInfo[]>([])
+  const [showTech, setShowTech] = useState(false)
+
+  // Detect tech on current tab
+  useState(() => {
+    chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+      if (!tab?.id) return
+      chrome.tabs.sendMessage(tab.id, { type: "GET_TECH" }, (response) => {
+        if (chrome.runtime.lastError) return
+        if (response?.techs) setTechs(response.techs)
+      })
+    })
+  })
 
   const fuzzyResults = fuzzySearch(extensions, search, [(e) => e.name])
   const filtered = fuzzyResults.map((r) => r.item)
@@ -92,6 +112,22 @@ function Popup() {
         </div>
         <div className="flex items-center gap-1">
           <button
+            onClick={() => setShowTech(!showTech)}
+            title="Detect technologies"
+            className={`p-1.5 rounded transition-colors relative ${
+              showTech ? "bg-chart-5/20 text-chart-5" : techs.length > 0 ? "text-chart-5/60 hover:text-chart-5 hover:bg-accent" : "text-fg/60 hover:text-fg hover:bg-accent"
+            }`}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="10" rx="2" />
+              <circle cx="9" cy="16" r="1" fill="currentColor" />
+              <circle cx="15" cy="16" r="1" fill="currentColor" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            </svg>
+            {techs.length > 0 && !showTech && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-chart-5" />
+            )}
+          </button>
+          <button
             onClick={saveCurrentLink}
             title="Save current page link"
             className="p-1.5 rounded hover:bg-accent text-fg/60 hover:text-fg transition-colors">
@@ -132,6 +168,30 @@ function Popup() {
           </button>
         </div>
       </div>
+
+      {/* Tech Detection Panel */}
+      {showTech && (
+        <div className="border-b border-border">
+          {techs.length > 0 ? (
+            <div className="px-3 py-2 space-y-1 max-h-[160px] overflow-y-auto">
+              <p className="text-[10px] text-fg/30 uppercase tracking-wider mb-1">Detected Technologies</p>
+              {techs.map((t, i) => (
+                <div key={i} className="flex items-center justify-between py-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-fg">{t.name}</span>
+                    {t.version && <span className="text-[10px] text-fg/30">v{t.version}</span>}
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent text-fg/40">{t.category}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-3 py-3 text-xs text-fg/30 text-center">
+              No technologies detected on this page
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Profile Switcher */}
       {profiles.length > 0 && (

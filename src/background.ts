@@ -1,6 +1,9 @@
 import { getLinks, getSettings, setLinks, setSettings, touchExtension } from "./storage"
 import type { CollectedLink } from "./types"
 
+// In-memory cache for tech detections per hostname
+const cachedTech = new Map<string, { techs: any[]; url: string; timestamp: number }>()
+
 // Badge: show enabled extension count
 async function updateBadge() {
   const all = await chrome.management.getAll()
@@ -64,6 +67,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ ok: true })
     )
     return true
+  }
+
+  if (message.type === "TECH_DETECTED") {
+    // Store latest tech detection for the current tab
+    cachedTech.set(message.hostname, { techs: message.techs, url: message.url, timestamp: Date.now() })
+    sendResponse({ ok: true })
+  }
+
+  if (message.type === "GET_CACHED_TECH") {
+    const entry = cachedTech.get(message.hostname)
+    sendResponse({ techs: entry?.techs || [] })
   }
 
   if (message.type === "UPDATE_SETTING") {

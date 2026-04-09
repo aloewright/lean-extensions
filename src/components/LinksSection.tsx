@@ -18,10 +18,15 @@ export function LinksSection({ links, onAdd, onRemove, onUpdate, onClear, settin
   const [editingTagId, setEditingTagId] = useState<string | null>(null)
   const [tagInput, setTagInput] = useState("")
 
-  const filtered = links.filter((l) =>
+  const [activeTag, setActiveTag] = useState<string | null>(null)
+
+  const allTags = Array.from(new Set(links.flatMap((l) => l.tags))).sort()
+
+  let filtered = links.filter((l) =>
     l.title.toLowerCase().includes(search.toLowerCase()) ||
     l.url.toLowerCase().includes(search.toLowerCase())
   )
+  if (activeTag) filtered = filtered.filter((l) => l.tags.includes(activeTag))
 
   const sendToNotebook = () => {
     const toSend = filtered.length ? filtered : links
@@ -105,8 +110,30 @@ export function LinksSection({ links, onAdd, onRemove, onUpdate, onClear, settin
       <input
         type="text" value={search} onChange={(e) => setSearch(e.target.value)}
         placeholder="Filter links..."
-        className="w-full text-sm py-2 px-3 rounded bg-card border border-border text-fg placeholder-fg/30 outline-none focus:border-primary/50 mb-4"
+        className="w-full text-sm py-2 px-3 rounded bg-card border border-border text-fg placeholder-fg/30 outline-none focus:border-primary/50 mb-3"
       />
+
+      {allTags.length > 0 && (
+        <div className="flex gap-1 mb-3 flex-wrap">
+          <button
+            onClick={() => setActiveTag(null)}
+            className={`text-[11px] py-0.5 px-2 rounded transition-colors ${
+              !activeTag ? "bg-chart-1/20 text-chart-1" : "bg-accent/50 text-fg/40 hover:text-fg/60"
+            }`}>
+            All
+          </button>
+          {allTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+              className={`text-[11px] py-0.5 px-2 rounded transition-colors ${
+                activeTag === tag ? "bg-chart-1/20 text-chart-1" : "bg-accent/50 text-fg/40 hover:text-fg/60"
+              }`}>
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-1">
         {filtered.map((link) => (

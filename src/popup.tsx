@@ -164,6 +164,12 @@ function Popup() {
           className="flex-1 text-xs py-1.5 px-3 rounded bg-accent hover:bg-accent/80 text-fg transition-colors">
           Disable All
         </button>
+        <button
+          onClick={() => { toggleAll(false, settings.alwaysEnabled); showToast("Lean mode — only pinned active") }}
+          title="Disable everything except pinned extensions"
+          className="text-xs py-1.5 px-3 rounded bg-chart-2/20 text-chart-2 hover:bg-chart-2/30 transition-colors whitespace-nowrap">
+          Lean
+        </button>
       </div>
 
       {/* Search */}

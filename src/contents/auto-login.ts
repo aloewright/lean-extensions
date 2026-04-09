@@ -29,28 +29,54 @@ function getHostname(): string {
 
 // Detect if this page has a login form
 function hasLoginForm(): boolean {
-  const passwordFields = document.querySelectorAll('input[type="password"]')
-  if (passwordFields.length > 0) return true
+  // Password fields
+  if (document.querySelectorAll('input[type="password"]').length > 0) return true
+
+  // Email/username fields that look like login
+  const emailFields = document.querySelectorAll('input[type="email"], input[autocomplete="username"], input[autocomplete="email"], input[name*="email"], input[name*="user"]')
+  if (emailFields.length > 0) {
+    // Check if near a submit button
+    for (const field of emailFields) {
+      const form = field.closest("form")
+      if (form) return true
+    }
+  }
+
+  // Form actions
   const forms = document.querySelectorAll("form")
   for (const form of forms) {
-    const action = form.getAttribute("action")?.toLowerCase() || ""
-    if (action.includes("login") || action.includes("signin") || action.includes("auth")) return true
+    const action = (form.getAttribute("action") || "").toLowerCase()
+    const id = (form.id || "").toLowerCase()
+    const className = (form.className || "").toLowerCase()
+    const all = `${action} ${id} ${className}`
+    if (all.match(/login|signin|sign-in|auth|log-in|credential/)) return true
   }
+
+  // URL hints
+  const url = window.location.href.toLowerCase()
+  if (url.match(/\/(login|signin|sign-in|auth|log-in|sso|account\/login)/)) return true
+
+  // Page title hints
+  const title = document.title.toLowerCase()
+  if (title.match(/\b(log ?in|sign ?in|authenticate)\b/)) return true
+
   return false
 }
 
 // Find social login buttons on the page
 function findSocialButtons(): { provider: string; element: HTMLElement; selector: string }[] {
   const results: { provider: string; element: HTMLElement; selector: string }[] = []
-  const buttons = document.querySelectorAll('button, a[href], [role="button"], input[type="submit"]')
+  const buttons = document.querySelectorAll('button, a[href], [role="button"], input[type="submit"], div[onclick]')
 
   for (const btn of buttons) {
     const el = btn as HTMLElement
     const text = (el.textContent || "").toLowerCase().trim()
     const href = (el as HTMLAnchorElement).href?.toLowerCase() || ""
     const ariaLabel = el.getAttribute("aria-label")?.toLowerCase() || ""
-    const className = el.className?.toLowerCase() || ""
-    const allText = `${text} ${href} ${ariaLabel} ${className}`
+    const className = (typeof el.className === "string" ? el.className : "").toLowerCase()
+    const title = el.getAttribute("title")?.toLowerCase() || ""
+    const imgAlt = el.querySelector("img")?.getAttribute("alt")?.toLowerCase() || ""
+    const allText = `${text} ${href} ${ariaLabel} ${className} ${title} ${imgAlt}`
 
     for (const provider of SOCIAL_PROVIDERS) {
       const textMatch = provider.textMatches.some((t) => text.includes(t) || ariaLabel.includes(t))
@@ -181,5 +207,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 })
 
-// Run on page load
+// Run on page load, with retry for SPAs that load forms dynamically
 checkSavedLogin()
+
+// Watch for dynamically added login forms (SPAs)
+let observed = false
+const observer = new MutationObserver(() => {
+  if (observed) return
+  if (hasLoginForm() || findSocialButtons().length > 0) {
+    observed = true
+    observer.disconnect()
+    checkSavedLogin()
+  }
+})
+// Only observe if we didn't find a form on first try
+if (!hasLoginForm() && findSocialButtons().length === 0) {
+  observer.observe(document.body, { childList: true, subtree: true })
+  // Stop observing after 10s to avoid performance drag
+  setTimeout(() => observer.disconnect(), 10000)
+}

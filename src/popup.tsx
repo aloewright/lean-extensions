@@ -41,10 +41,21 @@ function Popup() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
     if (!tab?.id) return
     const dataUrl = await chrome.tabs.captureVisibleTab(undefined, { format: "png" })
+    // Save locally
     const link = document.createElement("a")
     link.href = dataUrl
     link.download = `screenshot-${Date.now()}.png`
     link.click()
+    // Also upload to CloudOS R2 if configured
+    const base64 = dataUrl.split(",")[1]
+    if (base64) {
+      chrome.runtime.sendMessage({
+        type: "CLOUDOS_UPLOAD_MEDIA",
+        base64,
+        mimeType: "image/png",
+        filename: `screenshot-${Date.now()}.png`,
+      })
+    }
     showToast("Screenshot saved")
   }
 
@@ -95,11 +106,35 @@ function Popup() {
           <TechButton active={info.activePanel === "tech"} count={info.techs.length} onClick={() => info.toggle("tech")} />
           <RssButton active={info.activePanel === "rss"} count={info.feeds.length} onClick={() => info.toggle("rss")} />
           <LoginButton active={info.activePanel === "login"} hasLogin={!!(info.loginInfo?.hasForm || info.loginInfo?.socials.length)} onClick={() => info.toggle("login")} />
-          <button onClick={saveCurrentLink} title="Save current page link"
+          <button onClick={saveCurrentLink} title="Save link"
             className="p-1.5 rounded hover:bg-accent text-fg/60 hover:text-fg transition-colors">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+          </button>
+          <button onClick={async () => {
+              const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+              if (!tab?.id || !tab?.title) return
+              // Get page HTML from the content script
+              chrome.tabs.sendMessage(tab.id, { type: "GET_PAGE_HTML" }, (response) => {
+                if (chrome.runtime.lastError || !response) {
+                  showToast("Could not read page")
+                  return
+                }
+                chrome.runtime.sendMessage({
+                  type: "CLOUDOS_SAVE_PAGE",
+                  title: tab.title,
+                  html: response.html,
+                  text: response.text,
+                }, (result) => {
+                  showToast(result?.ok ? "Saved to CloudOS" : "Failed — check token")
+                })
+              })
+            }} title="Save page to CloudOS"
+            className="p-1.5 rounded hover:bg-accent text-fg/60 hover:text-fg transition-colors">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
             </svg>
           </button>
           <button onClick={captureScreenshot} title="Screenshot visible area"

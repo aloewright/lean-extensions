@@ -1,4 +1,5 @@
 import { getLinks, getLastUsed, getSettings, setLinks, setSettings, touchExtension } from "./storage"
+import { saveNote, uploadMedia, saveHighlight } from "./utils/cloudos"
 import type { CollectedLink } from "./types"
 
 // In-memory cache for tech detections per hostname
@@ -105,6 +106,32 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "GET_LOGIN_PREFS") {
     chrome.storage.local.get("loginPreferences").then((result) => {
       sendResponse({ prefs: result.loginPreferences || [] })
+    })
+    return true
+  }
+
+  if (message.type === "CLOUDOS_SAVE_PAGE") {
+    saveNote(message.title, message.html, message.text).then((result) => {
+      sendResponse({ ok: !!result, id: result?.id })
+    })
+    return true
+  }
+
+  if (message.type === "CLOUDOS_UPLOAD_MEDIA") {
+    // Convert base64 to blob, then upload
+    const byteChars = atob(message.base64)
+    const byteNums = new Array(byteChars.length)
+    for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i)
+    const blob = new Blob([new Uint8Array(byteNums)], { type: message.mimeType })
+    uploadMedia(blob, message.filename).then((result) => {
+      sendResponse({ ok: !!result, key: result?.key, url: result?.url })
+    })
+    return true
+  }
+
+  if (message.type === "CLOUDOS_SAVE_HIGHLIGHT") {
+    saveHighlight(message.text, message.url, message.siteName).then((result) => {
+      sendResponse({ ok: !!result, id: result?.id })
     })
     return true
   }

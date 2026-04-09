@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react"
 import type { ExtensionInfo, Settings } from "../types"
 
 interface Props {
@@ -43,6 +44,25 @@ function relativeDate(iso: string): string {
 }
 
 export function SettingsSection({ settings, extensions, lastUsed, onUpdate }: Props) {
+  const [cloudosUrl, setCloudosUrl] = useState("https://notes.pdx.software/api")
+  const [cloudosToken, setCloudosToken] = useState("")
+  const [cloudosSaved, setCloudosSaved] = useState(false)
+
+  useEffect(() => {
+    chrome.storage.local.get("cloudosConfig").then((result) => {
+      if (result.cloudosConfig) {
+        setCloudosUrl(result.cloudosConfig.apiUrl || "https://notes.pdx.software/api")
+        setCloudosToken(result.cloudosConfig.token || "")
+      }
+    })
+  }, [])
+
+  const saveCloudos = () => {
+    chrome.storage.local.set({ cloudosConfig: { apiUrl: cloudosUrl, token: cloudosToken } })
+    setCloudosSaved(true)
+    setTimeout(() => setCloudosSaved(false), 2000)
+  }
+
   const pinnedExts = (settings.alwaysEnabled || [])
     .map((id) => extensions.find((e) => e.id === id))
     .filter(Boolean)
@@ -162,6 +182,40 @@ export function SettingsSection({ settings, extensions, lastUsed, onUpdate }: Pr
                 <p className="text-xs text-fg/20 mt-1">All extensions are within the {deleteDays}-day window.</p>
               )
             })()}
+          </div>
+        </div>
+
+        {/* CloudOS */}
+        <div className="p-4 rounded-lg bg-card border border-border">
+          <h3 className="text-sm font-medium mb-1">CloudOS Integration</h3>
+          <p className="text-xs text-fg/30 mb-3">Save pages, highlights, and media to your CloudOS second brain.</p>
+
+          <div className="space-y-2">
+            <div>
+              <label className="text-xs text-fg/50 block mb-1">API URL</label>
+              <input
+                type="text" value={cloudosUrl} onChange={(e) => setCloudosUrl(e.target.value)}
+                className="w-full text-xs py-1.5 px-3 rounded bg-bg border border-border text-fg placeholder-fg/30 outline-none focus:border-primary/50 font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-fg/50 block mb-1">Service Token</label>
+              <input
+                type="password" value={cloudosToken} onChange={(e) => setCloudosToken(e.target.value)}
+                placeholder="X-CloudOS-Service-Token"
+                className="w-full text-xs py-1.5 px-3 rounded bg-bg border border-border text-fg placeholder-fg/30 outline-none focus:border-primary/50 font-mono"
+              />
+            </div>
+            <button onClick={saveCloudos}
+              className={`text-xs py-1.5 px-4 rounded transition-colors ${cloudosSaved ? "bg-chart-2/20 text-chart-2" : "bg-chart-1 text-bg font-medium hover:bg-chart-1/90"}`}>
+              {cloudosSaved ? "Saved" : "Save"}
+            </button>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-border/50">
+            <p className="text-[10px] text-fg/30">
+              Cloud icon in popup → save page as note (D1) &middot; Select text → "Save to CloudOS" tooltip (highlights) &middot; Screenshots/PDFs → R2 bucket
+            </p>
           </div>
         </div>
 

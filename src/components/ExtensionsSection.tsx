@@ -35,6 +35,33 @@ export function ExtensionsSection({
   const [search, setSearch] = useState("")
   const [sortBy, setSortBy] = useState<SortBy>("name")
   const [filterBy, setFilterBy] = useState<FilterBy>("all")
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [selectMode, setSelectMode] = useState(false)
+
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const deleteSelected = async () => {
+    if (selected.size === 0) return
+    const names = [...selected].map((id) => extensions.find((e) => e.id === id)?.name).filter(Boolean)
+    if (!confirm(`Uninstall ${selected.size} extension${selected.size > 1 ? "s" : ""}?\n\n${names.join("\n")}`)) return
+    for (const id of selected) {
+      try { await chrome.management.uninstall(id) } catch {}
+    }
+    setSelected(new Set())
+    setSelectMode(false)
+  }
+
+  const selectAll = () => {
+    const ids = filtered.filter((e) => e.mayDisable).map((e) => e.id)
+    setSelected(new Set(ids))
+  }
 
   // Fuzzy search
   const fuzzyResults = fuzzySearch(
@@ -133,6 +160,10 @@ export function ExtensionsSection({
           <p className="text-xs text-fg/40 mt-0.5">{enabledCount} of {extensions.length} enabled</p>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => { setSelectMode(!selectMode); setSelected(new Set()) }}
+            className={`text-xs py-1.5 px-3 rounded transition-colors ${selectMode ? "bg-destructive/20 text-destructive" : "bg-accent hover:bg-accent/80"}`}>
+            {selectMode ? "Cancel" : "Select"}
+          </button>
           <button onClick={() => onToggleAll(true, settings.alwaysEnabled)} className="text-xs py-1.5 px-3 rounded bg-accent hover:bg-accent/80 transition-colors">Enable All</button>
           <button onClick={() => onToggleAll(false, settings.alwaysEnabled)} className="text-xs py-1.5 px-3 rounded bg-accent hover:bg-accent/80 transition-colors">Disable All</button>
           <button onClick={() => exportAs("json")} className="text-xs py-1.5 px-3 rounded bg-accent hover:bg-accent/80 transition-colors">Export JSON</button>
@@ -186,6 +217,26 @@ export function ExtensionsSection({
         </div>
       </div>
 
+      {/* Bulk action bar */}
+      {selectMode && (
+        <div className="flex items-center gap-3 mb-4 p-2.5 rounded-lg bg-card border border-border">
+          <input
+            type="checkbox"
+            checked={selected.size > 0 && selected.size === filtered.filter((e) => e.mayDisable).length}
+            onChange={(e) => e.target.checked ? selectAll() : setSelected(new Set())}
+            className="accent-chart-1"
+          />
+          <span className="text-xs text-fg/50">{selected.size} selected</span>
+          <div className="flex-1" />
+          <button onClick={selectAll} className="text-[11px] py-1 px-2.5 rounded bg-accent hover:bg-accent/80 text-fg/60 transition-colors">Select All</button>
+          <button onClick={() => setSelected(new Set())} className="text-[11px] py-1 px-2.5 rounded bg-accent hover:bg-accent/80 text-fg/60 transition-colors">Clear</button>
+          <button onClick={deleteSelected} disabled={selected.size === 0}
+            className="text-[11px] py-1 px-3 rounded bg-destructive/20 text-destructive hover:bg-destructive/30 disabled:opacity-30 transition-colors">
+            Uninstall ({selected.size})
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="text-fg/40 text-sm">Loading...</div>
       ) : (
@@ -195,7 +246,16 @@ export function ExtensionsSection({
             const isPinned = settings.alwaysEnabled?.includes(ext.id)
             const lastUsedDate = lastUsed[ext.id]
             return (
-              <div key={ext.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-card/50 transition-colors group">
+              <div key={ext.id} className={`flex items-center gap-3 p-3 rounded-lg hover:bg-card/50 transition-colors group ${selected.has(ext.id) ? "bg-card/30" : ""}`}>
+                {selectMode && (
+                  <input
+                    type="checkbox"
+                    checked={selected.has(ext.id)}
+                    onChange={() => toggleSelected(ext.id)}
+                    disabled={!ext.mayDisable}
+                    className="accent-chart-1 flex-shrink-0"
+                  />
+                )}
                 {iconUrl ? (
                   <img src={iconUrl} alt="" className="w-8 h-8 rounded flex-shrink-0" />
                 ) : (

@@ -80,6 +80,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     sendResponse({ techs: entry?.techs || [] })
   }
 
+  if (message.type === "RESOLVE_IP") {
+    resolveHostname(message.hostname).then((ip) => sendResponse({ ip }))
+    return true
+  }
+
   if (message.type === "UPDATE_SETTING") {
     getSettings().then(async (s) => {
       const next = { ...s, [message.key]: message.value }
@@ -190,6 +195,18 @@ async function switchProfile(extensionIds: string[], alwaysEnabled: string[]) {
     chrome.management.setEnabled(id, true).catch(() => {})
   )
   await Promise.all(enablePromises)
+}
+
+// DNS resolution via public DNS-over-HTTPS
+async function resolveHostname(hostname: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(hostname)}&type=A`)
+    const data = await res.json()
+    const answer = data.Answer?.find((a: any) => a.type === 1)
+    return answer?.data || null
+  } catch {
+    return null
+  }
 }
 
 // Keyboard shortcuts

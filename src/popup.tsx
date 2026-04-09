@@ -13,6 +13,20 @@ interface TechInfo {
   confidence: string
 }
 
+interface IpInfo {
+  ip: string
+  city?: string
+  region?: string
+  country?: string
+  org?: string
+  loc?: string
+}
+
+interface SiteIpInfo {
+  ip: string
+  hostname: string
+}
+
 function Popup() {
   const { extensions, loading, toggleExtension, toggleAll } = useExtensions()
   const { settings, update } = useSettings()
@@ -21,6 +35,9 @@ function Popup() {
   const [toast, setToast] = useState<string | null>(null)
   const [techs, setTechs] = useState<TechInfo[]>([])
   const [showTech, setShowTech] = useState(false)
+  const [userIp, setUserIp] = useState<IpInfo | null>(null)
+  const [siteIp, setSiteIp] = useState<SiteIpInfo | null>(null)
+  const [showNetwork, setShowNetwork] = useState(false)
 
   // Detect tech on current tab
   useState(() => {
@@ -30,7 +47,30 @@ function Popup() {
         if (chrome.runtime.lastError) return
         if (response?.techs) setTechs(response.techs)
       })
+      // Get site IP from background
+      if (tab.url) {
+        try {
+          const hostname = new URL(tab.url).hostname
+          if (hostname) {
+            chrome.runtime.sendMessage({ type: "RESOLVE_IP", hostname }, (response) => {
+              if (chrome.runtime.lastError) return
+              if (response?.ip) setSiteIp({ ip: response.ip, hostname })
+            })
+          }
+        } catch {}
+      }
     })
+    // Get user's IP
+    fetch("https://ipinfo.io/json?token=")
+      .then((r) => r.json())
+      .then((data) => setUserIp(data))
+      .catch(() => {
+        // Fallback to a simpler API
+        fetch("https://api.ipify.org?format=json")
+          .then((r) => r.json())
+          .then((data) => setUserIp({ ip: data.ip }))
+          .catch(() => {})
+      })
   })
 
   const fuzzyResults = fuzzySearch(extensions, search, [(e) => e.name])
@@ -112,7 +152,19 @@ function Popup() {
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => setShowTech(!showTech)}
+            onClick={() => { setShowNetwork(!showNetwork); if (showTech) setShowTech(false) }}
+            title="Network info"
+            className={`p-1.5 rounded transition-colors relative ${
+              showNetwork ? "bg-chart-3/20 text-chart-3" : "text-fg/60 hover:text-fg hover:bg-accent"
+            }`}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => { setShowTech(!showTech); if (showNetwork) setShowNetwork(false) }}
             title="Detect technologies"
             className={`p-1.5 rounded transition-colors relative ${
               showTech ? "bg-chart-5/20 text-chart-5" : techs.length > 0 ? "text-chart-5/60 hover:text-chart-5 hover:bg-accent" : "text-fg/60 hover:text-fg hover:bg-accent"
@@ -168,6 +220,74 @@ function Popup() {
           </button>
         </div>
       </div>
+
+      {/* Network Info Panel */}
+      {showNetwork && (
+        <div className="border-b border-border px-3 py-2.5 space-y-2">
+          <p className="text-[10px] text-fg/30 uppercase tracking-wider">Network</p>
+
+          {/* Your IP */}
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-fg/40">Your IP</span>
+            {userIp ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-fg font-mono">{userIp.ip}</span>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(userIp.ip); showToast("IP copied") }}
+                  className="text-fg/20 hover:text-fg/50 transition-colors">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <span className="text-[11px] text-fg/20">loading...</span>
+            )}
+          </div>
+
+          {/* Location */}
+          {userIp?.city && (
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-fg/40">Location</span>
+              <span className="text-xs text-fg/60">
+                {[userIp.city, userIp.region, userIp.country].filter(Boolean).join(", ")}
+              </span>
+            </div>
+          )}
+
+          {/* ISP */}
+          {userIp?.org && (
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-fg/40">ISP</span>
+              <span className="text-xs text-fg/60 truncate max-w-[200px]">{userIp.org}</span>
+            </div>
+          )}
+
+          {/* Site IP */}
+          {siteIp && (
+            <>
+              <div className="border-t border-border/50 my-1" />
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-fg/40">Site IP</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-fg font-mono">{siteIp.ip}</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(siteIp.ip); showToast("Site IP copied") }}
+                    className="text-fg/20 hover:text-fg/50 transition-colors">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-fg/40">Host</span>
+                <span className="text-xs text-fg/60 font-mono">{siteIp.hostname}</span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Tech Detection Panel */}
       {showTech && (

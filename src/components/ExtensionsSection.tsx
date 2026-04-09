@@ -20,6 +20,8 @@ export function ExtensionsSection({
     e.description.toLowerCase().includes(search.toLowerCase())
   )
   const enabledCount = extensions.filter((e) => e.enabled).length
+  const devCount = extensions.filter((e) => e.installType === "development").length
+  const pinnedCount = settings.alwaysEnabled?.length || 0
 
   const exportAs = (format: "json" | "csv") => {
     const data = extensions.map((e) => ({
@@ -52,6 +54,32 @@ export function ExtensionsSection({
 
   return (
     <div>
+      {/* Stats bar */}
+      <div className="flex gap-3 mb-4">
+        <div className="flex-1 p-3 rounded-lg bg-card border border-border">
+          <p className="text-[10px] text-fg/30 uppercase tracking-wider">Total</p>
+          <p className="text-lg font-semibold">{extensions.length}</p>
+        </div>
+        <div className="flex-1 p-3 rounded-lg bg-card border border-border">
+          <p className="text-[10px] text-fg/30 uppercase tracking-wider">Enabled</p>
+          <p className="text-lg font-semibold text-chart-1">{enabledCount}</p>
+        </div>
+        <div className="flex-1 p-3 rounded-lg bg-card border border-border">
+          <p className="text-[10px] text-fg/30 uppercase tracking-wider">Disabled</p>
+          <p className="text-lg font-semibold text-fg/40">{extensions.length - enabledCount}</p>
+        </div>
+        <div className="flex-1 p-3 rounded-lg bg-card border border-border">
+          <p className="text-[10px] text-fg/30 uppercase tracking-wider">Pinned</p>
+          <p className="text-lg font-semibold text-chart-4">{pinnedCount}</p>
+        </div>
+        {devCount > 0 && (
+          <div className="flex-1 p-3 rounded-lg bg-card border border-border">
+            <p className="text-[10px] text-fg/30 uppercase tracking-wider">Dev Mode</p>
+            <p className="text-lg font-semibold text-chart-3">{devCount}</p>
+          </div>
+        )}
+      </div>
+
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-semibold">Extensions</h2>

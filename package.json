@@ -34,7 +34,8 @@
       "storage",
       "debugger",
       "clipboardWrite",
-      "downloads"
+      "downloads",
+      "contextMenus"
     ],
     "host_permissions": [
       "https://notebooklm.google.com/*"

@@ -13,6 +13,30 @@ async function updateBadge() {
 }
 
 updateBadge()
+
+// Context menu: right-click to save links
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: "save-link",
+    title: "Save link to Lean Extensions",
+    contexts: ["link"]
+  })
+  chrome.contextMenus.create({
+    id: "save-page",
+    title: "Save page to Lean Extensions",
+    contexts: ["page"]
+  })
+})
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === "save-link" && info.linkUrl) {
+    await saveLink(info.linkUrl, info.linkUrl)
+  }
+  if (info.menuItemId === "save-page" && tab?.url && tab?.title) {
+    await saveLink(tab.url, tab.title)
+  }
+})
+
 chrome.management.onEnabled.addListener(updateBadge)
 chrome.management.onDisabled.addListener(updateBadge)
 chrome.management.onInstalled.addListener(updateBadge)

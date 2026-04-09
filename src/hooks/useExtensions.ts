@@ -52,8 +52,9 @@ export function useExtensions() {
   }
 
   const toggleAll = async (enabled: boolean, alwaysEnabled: string[] = []) => {
+    const selfId = chrome.runtime.id
     const promises = extensions
-      .filter((e) => e.mayDisable && (enabled || !alwaysEnabled.includes(e.id)))
+      .filter((e) => e.id !== selfId && e.mayDisable && (enabled || !alwaysEnabled.includes(e.id)))
       .map((e) => chrome.management.setEnabled(e.id, enabled))
     await Promise.all(promises)
   }

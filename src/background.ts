@@ -197,24 +197,42 @@ async function switchProfile(extensionIds: string[], alwaysEnabled: string[]) {
   await Promise.all(enablePromises)
 }
 
-// Auto-offload: disable extensions not used in X days
+// Auto-offload: disable extensions not used in X days, delete after Y days
 async function checkAutoOffload() {
   const settings = await getSettings()
-  const days = settings.autoOffloadDays
-  if (!days || days <= 0) return
-
   const lastUsed = await getLastUsed()
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
   const all = await chrome.management.getAll()
-  const exts = all.filter(
-    (e) => e.type === "extension" && e.id !== chrome.runtime.id && e.mayDisable && e.enabled
-  )
+  const selfId = chrome.runtime.id
 
-  for (const ext of exts) {
-    if (settings.alwaysEnabled.includes(ext.id)) continue
-    const lastUsedDate = lastUsed[ext.id]
-    if (!lastUsedDate || new Date(lastUsedDate).getTime() < cutoff) {
-      await chrome.management.setEnabled(ext.id, false)
+  // Auto-delete: uninstall extensions past the delete threshold
+  const deleteDays = settings.autoDeleteDays
+  if (deleteDays && deleteDays > 0) {
+    const deleteCutoff = Date.now() - deleteDays * 86400000
+    const deleteTargets = all.filter(
+      (e) => e.type === "extension" && e.id !== selfId && e.mayDisable &&
+        !settings.alwaysEnabled.includes(e.id)
+    )
+    for (const ext of deleteTargets) {
+      const lu = lastUsed[ext.id]
+      if (!lu || new Date(lu).getTime() < deleteCutoff) {
+        try { await chrome.management.uninstall(ext.id) } catch {}
+      }
+    }
+  }
+
+  // Auto-disable: disable extensions past the offload threshold
+  const offloadDays = settings.autoOffloadDays
+  if (offloadDays && offloadDays > 0) {
+    const offloadCutoff = Date.now() - offloadDays * 86400000
+    const exts = all.filter(
+      (e) => e.type === "extension" && e.id !== selfId && e.mayDisable && e.enabled
+    )
+    for (const ext of exts) {
+      if (settings.alwaysEnabled.includes(ext.id)) continue
+      const lu = lastUsed[ext.id]
+      if (!lu || new Date(lu).getTime() < offloadCutoff) {
+        await chrome.management.setEnabled(ext.id, false)
+      }
     }
   }
 }

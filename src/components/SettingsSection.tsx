@@ -23,6 +23,15 @@ const OFFLOAD_OPTIONS = [
   { value: 90, label: "90 days" },
 ]
 
+const DELETE_OPTIONS = [
+  { value: 0, label: "Off" },
+  { value: 30, label: "30 days" },
+  { value: 60, label: "60 days" },
+  { value: 90, label: "90 days" },
+  { value: 180, label: "180 days" },
+  { value: 365, label: "1 year" },
+]
+
 function relativeDate(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const days = Math.floor(diff / 86400000)
@@ -38,6 +47,7 @@ export function SettingsSection({ settings, extensions, lastUsed, onUpdate }: Pr
     .filter(Boolean)
 
   const offloadDays = settings.autoOffloadDays || 0
+  const deleteDays = settings.autoDeleteDays || 0
 
   // Preview which extensions would be offloaded
   const cutoff = offloadDays > 0 ? Date.now() - offloadDays * 86400000 : 0
@@ -99,6 +109,59 @@ export function SettingsSection({ settings, extensions, lastUsed, onUpdate }: Pr
           {offloadDays > 0 && atRisk.length === 0 && (
             <p className="text-xs text-fg/20 mt-1">All extensions are within the {offloadDays}-day window.</p>
           )}
+
+          {/* Delete after */}
+          <div className="border-t border-border/50 mt-4 pt-4">
+            <h4 className="text-xs font-medium text-destructive/80 mb-1">Auto-Delete (Uninstall)</h4>
+            <p className="text-xs text-fg/30 mb-3">Permanently uninstall extensions not used beyond this threshold. This cannot be undone.</p>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-fg/50">Delete after:</span>
+              <div className="flex gap-1">
+                {DELETE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => onUpdate({ autoDeleteDays: opt.value })}
+                    className={`text-[11px] py-1 px-2.5 rounded transition-colors ${
+                      deleteDays === opt.value
+                        ? "bg-destructive/20 text-destructive"
+                        : "bg-accent/50 text-fg/40 hover:text-fg/60"
+                    }`}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {deleteDays > 0 && (() => {
+              const deleteCutoff = Date.now() - deleteDays * 86400000
+              const deleteRisk = extensions.filter((e) => {
+                if (!e.mayDisable) return false
+                if (settings.alwaysEnabled.includes(e.id)) return false
+                const lu = lastUsed[e.id]
+                return !lu || new Date(lu).getTime() < deleteCutoff
+              })
+              return deleteRisk.length > 0 ? (
+                <div className="mt-2 p-2.5 rounded bg-destructive/5 border border-destructive/20">
+                  <p className="text-[10px] text-destructive/60 uppercase tracking-wider mb-1.5">
+                    Would be uninstalled now ({deleteRisk.length})
+                  </p>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {deleteRisk.map((ext) => (
+                      <div key={ext.id} className="flex items-center justify-between text-xs">
+                        <span className="text-fg/60 truncate">{ext.name}</span>
+                        <span className="text-[10px] text-fg/20 flex-shrink-0">
+                          {lastUsed[ext.id] ? relativeDate(lastUsed[ext.id]) : "never used"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-fg/20 mt-1">All extensions are within the {deleteDays}-day window.</p>
+              )
+            })()}
+          </div>
         </div>
 
         {/* NotebookLM */}

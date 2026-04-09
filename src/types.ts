@@ -40,6 +40,7 @@ export interface Settings {
   activeProfileId?: string
   leanMode?: boolean
   autoOffloadDays?: number
+  autoDeleteDays?: number
 }
 
 export interface StorageSchema {

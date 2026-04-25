@@ -1,5 +1,7 @@
 # Lean Extensions
 
+[![Tests](https://github.com/aloewright/lean-extensions/actions/workflows/test.yml/badge.svg)](https://github.com/aloewright/lean-extensions/actions/workflows/test.yml)
+
 Lean Extensions is a Chrome extension built with [Plasmo](https://www.plasmo.com/)
 that helps keep your browser fast by giving you fine-grained control over which
 extensions are active. It also collects links, captures pages, and integrates
@@ -32,6 +34,11 @@ Test files live in `tests/`:
 - `tests/setup.ts` — mocks `@plasmohq/storage` and resets state per test
 - `tests/storage.test.ts` — covers `src/storage.ts` round-trips
 - `tests/types.test.ts` — verifies `DEFAULT_STORAGE` shape
+
+The `tests` GitHub Actions workflow (`.github/workflows/test.yml`) runs the
+same `npm test` on every pull request and on every push to `main`. CI installs
+deps with `--ignore-scripts` so Plasmo's post-install hooks don't fire — the
+storage/types tests run in plain Node and don't need the built extension.
 
 ## Project layout
 

@@ -6,3 +6,5 @@ dist/
 .DS_Store
 .env
 .env.*
+# This repo uses pnpm; npm lockfiles created by ad-hoc `npm install` should not be committed.
+package-lock.json

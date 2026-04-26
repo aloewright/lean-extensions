@@ -1,0 +1,6 @@
+interface:
+  display_name: "Lean Extensions"
+  short_description: "Repo-specific patterns and workflows for lean-extensions"
+  default_prompt: "Use the lean-extensions repo skill to follow existing architecture, testing, and workflow conventions."
+policy:
+  allow_implicit_invocation: true

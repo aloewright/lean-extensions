@@ -3,8 +3,8 @@ import "./style.css"
 import { useExtensions } from "./hooks/useExtensions"
 import { useSettings, useProfiles } from "./hooks/useStorage"
 import { FuzzySearchInput } from "./components/FuzzySearchInput"
-import { useInfoPanels, NetworkButton, TechButton, RssButton, LoginButton, NetworkPanel, TechPanel, RssPanel, LoginPanel } from "./components/InfoPanels"
-import { RecordButton, RecordPanel } from "./components/RecordPanel"
+import { useInfoPanels, NetworkButton, TechButton, RssButton, NetworkPanel, TechPanel, RssPanel } from "./components/InfoPanels"
+import { RecordButton } from "./components/RecordPanel"
 import { fuzzySearch } from "./utils/fuzzy"
 import type { Profile } from "./types"
 
@@ -14,7 +14,6 @@ function Popup() {
   const { profiles } = useProfiles()
   const [search, setSearch] = useState("")
   const [toast, setToast] = useState<string | null>(null)
-  const [showRecord, setShowRecord] = useState(false)
   const info = useInfoPanels()
 
   const baseList = settings.leanMode
@@ -107,8 +106,10 @@ function Popup() {
           <NetworkButton active={info.activePanel === "network"} hasData={!!info.userIp} onClick={() => info.toggle("network")} />
           <TechButton active={info.activePanel === "tech"} count={info.techs.length} onClick={() => info.toggle("tech")} />
           <RssButton active={info.activePanel === "rss"} count={info.feeds.length} onClick={() => info.toggle("rss")} />
-          <LoginButton active={info.activePanel === "login"} hasLogin={!!(info.loginInfo?.hasForm || info.loginInfo?.socials.length)} onClick={() => { info.toggle("login"); setShowRecord(false) }} />
-          <RecordButton active={showRecord} onClick={() => { setShowRecord(!showRecord); if (info.activePanel) info.toggle(null) }} />
+          <RecordButton onClick={() => {
+            chrome.tabs.create({ url: chrome.runtime.getURL("tabs/recorder.html") })
+            window.close()
+          }} />
           <button onClick={saveCurrentLink} title="Save link"
             className="p-1.5 rounded hover:bg-accent text-fg/60 hover:text-fg transition-colors">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -170,48 +171,6 @@ function Popup() {
           showToast(res?.ok ? `Saved ${f.title || 'feed'}` : "Save failed")
         })
       }} />}
-      {showRecord && (
-        <RecordPanel onSave={(blob, filename) => {
-          // Convert blob to base64 and upload to CloudOS R2
-          const reader = new FileReader()
-          reader.onload = () => {
-            const base64 = (reader.result as string).split(",")[1]
-            chrome.runtime.sendMessage({
-              type: "CLOUDOS_UPLOAD_MEDIA",
-              base64,
-              mimeType: "video/webm",
-              filename,
-            }, (result) => {
-              showToast(result?.ok ? "Uploaded to CloudOS" : "Upload failed")
-            })
-          }
-          reader.readAsDataURL(blob)
-        }} />
-      )}
-      {info.activePanel === "login" && (
-        <LoginPanel
-          loginInfo={info.loginInfo}
-          onSave={(provider, selector) => {
-            const hostname = info.loginInfo?.hostname
-            if (!hostname) return
-            chrome.runtime.sendMessage({ type: "SAVE_LOGIN_PREF", domain: hostname, provider, selector })
-            // Also tell the content script to click it now
-            chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
-              if (tab?.id) chrome.tabs.sendMessage(tab.id, { type: "SAVE_SOCIAL_LOGIN", provider })
-            })
-            info.setLoginInfo({ ...info.loginInfo!, savedProvider: provider })
-            showToast(`Will auto-sign in with ${provider}`)
-          }}
-          onRemove={() => {
-            const hostname = info.loginInfo?.hostname
-            if (!hostname) return
-            chrome.runtime.sendMessage({ type: "REMOVE_LOGIN_PREF", domain: hostname })
-            info.setLoginInfo({ ...info.loginInfo!, savedProvider: undefined })
-            showToast("Auto-login removed")
-          }}
-        />
-      )}
-
       {/* Profile Switcher */}
       {profiles.length > 0 && (
         <div className="px-3 py-2 border-b border-border flex items-center gap-2">

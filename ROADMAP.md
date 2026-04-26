@@ -7,6 +7,8 @@ Living plan for Lean Extensions. Items move up the list as they land.
 - Vitest harness with happy-dom and `@plasmohq/storage` mock
 - Unit coverage for `src/storage.ts` round-trips and `DEFAULT_STORAGE`
 - Hardening of the storage layer so callers always get well-typed defaults
+- GitHub Actions `tests` workflow gates `npm test` on every PR and push to
+  `main` (Node 22, deps installed with `--ignore-scripts`)
 
 ## Next
 
@@ -15,7 +17,9 @@ Living plan for Lean Extensions. Items move up the list as they land.
 - NotebookLM integration polish: better append-vs-new heuristics, friendlier
   errors when the tab is missing, retries on transient navigation failures
 - Playwright end-to-end tests that drive a real Chromium with the built
-  extension loaded, exercising the popup, dashboard, and hotkeys
+  extension loaded, exercising the popup, dashboard, and hotkeys (ALO-105)
+- `background.ts` unit tests for `toggle-all-off/on`, `save-link`, and alarm
+  handlers using a `chrome.management` mock (ALO-105)
 
 ## Later
 

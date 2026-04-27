@@ -77,10 +77,7 @@
         "description": "Open Lean Extensions dashboard"
       },
       "toggle-pip": {
-        "suggested_key": {
-          "default": "Alt+Shift+P"
-        },
-        "description": "Toggle picture-in-picture for the active video"
+        "description": "Toggle picture-in-picture for the active video. No default shortcut — Chrome caps suggested_key at 4 commands per extension; assign manually in chrome://extensions/shortcuts if you want a hotkey."
       }
     }
   }

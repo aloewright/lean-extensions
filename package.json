@@ -39,6 +39,7 @@
       "storage",
       "debugger",
       "clipboardWrite",
+      "clipboardRead",
       "downloads",
       "contextMenus",
       "cookies",

@@ -1,4 +1,5 @@
 import { getLinks, getLastUsed, getSettings, setLinks, setSettings, touchExtension } from "./storage"
+import { tts } from "./utils/ai-gateway"
 import { saveNote, uploadMedia, saveHighlight } from "./utils/cloudos"
 import { triggerPipInTab } from "./utils/pip-coord"
 import type { CollectedLink } from "./types"
@@ -136,6 +137,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ ok: true })
     })
     return true
+  }
+
+  // ─── Selection toolbar ──────────────────────────────────────────────
+
+  if (message.type === "TTS_PLAY") {
+    tts(String(message.text ?? "")).then(sendResponse)
+    return true
+  }
+
+  if (message.type === "BRAVE_SEARCH") {
+    const q = encodeURIComponent(String(message.text ?? ""))
+    chrome.tabs.create({ url: `https://search.brave.com/search?q=${q}` })
+    sendResponse({ ok: true })
+    return
+  }
+
+  if (message.type === "PERPLEXITY_SEARCH") {
+    const q = encodeURIComponent(String(message.text ?? ""))
+    chrome.tabs.create({ url: `https://www.perplexity.ai/?q=${q}` })
+    sendResponse({ ok: true })
+    return
   }
 })
 

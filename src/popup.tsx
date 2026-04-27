@@ -109,8 +109,7 @@ function Popup() {
       )}
 
       {/* Header */}
-      <div className="px-2 py-2 border-b border-border flex items-center gap-1">
-        <span className="text-[10px] text-fg/30 mr-auto">{enabledCount}/{extensions.length}</span>
+      <div className="px-2 py-2 border-b border-border flex items-center gap-1 justify-end">
           <NetworkButton active={info.activePanel === "network"} hasData={!!info.userIp} onClick={() => info.toggle("network")} />
           <TechButton active={info.activePanel === "tech"} count={info.techs.length} onClick={() => info.toggle("tech")} />
           <RssButton active={info.activePanel === "rss"} count={info.feeds.length} onClick={() => info.toggle("rss")} />

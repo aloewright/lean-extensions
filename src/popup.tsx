@@ -6,6 +6,7 @@ import { FuzzySearchInput } from "./components/FuzzySearchInput"
 import { useInfoPanels, NetworkButton, TechButton, RssButton, NetworkPanel, TechPanel, RssPanel } from "./components/InfoPanels"
 import { RecordButton } from "./components/RecordPanel"
 import { fuzzySearch } from "./utils/fuzzy"
+import { triggerPipInTab } from "./utils/pip-coord"
 import type { Profile } from "./types"
 
 function Popup() {
@@ -114,17 +115,19 @@ function Popup() {
             onClick={async () => {
               const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
               if (!tab?.id) return
-              chrome.tabs.sendMessage(tab.id, { type: "TOGGLE_PIP" }, (res) => {
-                if (chrome.runtime.lastError) {
-                  showToast("Reload page first")
-                  return
-                }
-                if (res?.ok) {
-                  showToast(res.action === "exited" ? "Exited PiP" : "Picture-in-picture")
-                } else {
-                  showToast(res?.reason || "PiP failed")
-                }
-              })
+              const res = await triggerPipInTab(tab.id)
+              if (res.ok) {
+                showToast(res.action === "exited" ? "Exited PiP" : "Picture-in-picture")
+              } else {
+                // Map developer-facing reasons (e.g. "No content script in
+                // frame" on chrome:// pages) to a user-friendly message;
+                // pass through the browser's own messages otherwise.
+                const friendly =
+                  res.reason === "No content script in frame"
+                    ? "Reload page first"
+                    : res.reason || "PiP failed"
+                showToast(friendly)
+              }
             }}
             title="Picture-in-picture (Alt+Shift+P)"
             className="p-1.5 rounded hover:bg-accent text-fg/60 hover:text-fg transition-colors">

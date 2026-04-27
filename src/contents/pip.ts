@@ -1,6 +1,11 @@
 import type { PlasmoCSConfig } from "plasmo"
 
 import {
+  getAutoPipEnabled,
+  PIP_AUTO_CHANGED_MESSAGE,
+  type PiPAutoChangedMessage
+} from "../utils/pip-auto"
+import {
   PIP_EXIT_MESSAGE,
   PIP_NO_VIDEO_REASON,
   PIP_TOGGLE_MESSAGE,
@@ -135,4 +140,114 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     )
     return true
   }
+  if (message?.type === PIP_AUTO_CHANGED_MESSAGE) {
+    const next = (message as PiPAutoChangedMessage).enabled === true
+    applyAutoPipState(next)
+    // No async response needed — fire and forget. Returning falsy
+    // tells chrome.runtime to release the message channel immediately.
+  }
+})
+
+/**
+ * Auto-PiP attribute manager (per-frame).
+ *
+ * The browser's `video.autoPictureInPicture` attribute is what actually
+ * triggers Chrome's native auto-PiP on tab/window blur. We just decide
+ * which videos to set it on. The MutationObserver catches videos that
+ * mount after our initial pass — common on SPAs and infinite-scroll
+ * timelines (e.g. Twitter, YouTube). Each frame runs its own copy of
+ * this content script (`all_frames: true`), so iframes self-manage.
+ *
+ * Module-scoped state is fine in a content script: the script lives
+ * for the lifetime of the frame's document, no MV3 SW eviction to
+ * worry about. On disable we also walk every existing video and clear
+ * the attribute, so toggling off takes effect without a reload.
+ */
+
+const AUTO_PIP_SUPPORTED =
+  typeof HTMLVideoElement !== "undefined" &&
+  "autoPictureInPicture" in HTMLVideoElement.prototype
+
+let autoPipEnabled = false
+let autoPipObserver: MutationObserver | null = null
+
+function setAutoPipAttribute(video: HTMLVideoElement, value: boolean): void {
+  try {
+    video.autoPictureInPicture = value
+  } catch {
+    // Some custom elements (or extension-injected `<video>` shims)
+    // mark the property non-writable. Skip silently — there's no
+    // user-actionable signal we could surface from a content script.
+  }
+}
+
+function applyToAllVideos(value: boolean): void {
+  if (!AUTO_PIP_SUPPORTED) return
+  // Closed shadow DOMs are intentionally skipped: querySelectorAll
+  // can't pierce them, and reaching into closed shadow roots from a
+  // content script isn't possible without page-script injection,
+  // which isn't worth the complexity for a best-effort feature.
+  const videos = document.querySelectorAll("video")
+  for (const v of videos) {
+    setAutoPipAttribute(v as HTMLVideoElement, value)
+  }
+}
+
+function handleMutations(mutations: MutationRecord[]): void {
+  if (!autoPipEnabled || !AUTO_PIP_SUPPORTED) return
+  for (const m of mutations) {
+    for (const node of m.addedNodes) {
+      if (!(node instanceof Element)) continue
+      if (node instanceof HTMLVideoElement) {
+        setAutoPipAttribute(node, true)
+        continue
+      }
+      // The added node could be a wrapper (e.g. a tweet card) that
+      // contains a <video> several levels deep. Sweep its subtree.
+      const nested = node.querySelectorAll?.("video")
+      if (nested) {
+        for (const v of nested) {
+          setAutoPipAttribute(v as HTMLVideoElement, true)
+        }
+      }
+    }
+  }
+}
+
+function startAutoPipObserver(): void {
+  if (autoPipObserver || !AUTO_PIP_SUPPORTED) return
+  if (typeof MutationObserver === "undefined") return
+  autoPipObserver = new MutationObserver(handleMutations)
+  autoPipObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true
+  })
+}
+
+function stopAutoPipObserver(): void {
+  if (!autoPipObserver) return
+  autoPipObserver.disconnect()
+  autoPipObserver = null
+}
+
+function applyAutoPipState(enabled: boolean): void {
+  autoPipEnabled = enabled
+  if (!AUTO_PIP_SUPPORTED) return
+  if (enabled) {
+    applyToAllVideos(true)
+    startAutoPipObserver()
+  } else {
+    stopAutoPipObserver()
+    applyToAllVideos(false)
+  }
+}
+
+// Bootstrap: on script load, read the persisted setting and wire up
+// the attribute + observer if it's on. The getter never throws, so we
+// don't need a catch — a `false` resolution is the correct no-op.
+void getAutoPipEnabled().then((enabled) => {
+  // If a PIP_AUTO_CHANGED message already updated state during the
+  // storage read, don't clobber it with the stale stored value.
+  if (autoPipEnabled !== false) return
+  if (enabled) applyAutoPipState(true)
 })

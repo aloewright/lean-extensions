@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import "./style.css"
 import { useExtensions } from "./hooks/useExtensions"
 import { useSettings, useProfiles } from "./hooks/useStorage"
@@ -6,6 +6,7 @@ import { FuzzySearchInput } from "./components/FuzzySearchInput"
 import { useInfoPanels, NetworkButton, TechButton, RssButton, NetworkPanel, TechPanel, RssPanel } from "./components/InfoPanels"
 import { RecordButton } from "./components/RecordPanel"
 import { fuzzySearch } from "./utils/fuzzy"
+import { getAutoPipEnabled, setAutoPipEnabled } from "./utils/pip-auto"
 import { triggerPipInTab } from "./utils/pip-coord"
 import type { Profile } from "./types"
 
@@ -15,7 +16,12 @@ function Popup() {
   const { profiles } = useProfiles()
   const [search, setSearch] = useState("")
   const [toast, setToast] = useState<string | null>(null)
+  const [autoPip, setAutoPip] = useState(false)
   const info = useInfoPanels()
+
+  useEffect(() => {
+    void getAutoPipEnabled().then(setAutoPip)
+  }, [])
 
   const baseList = settings.leanMode
     ? extensions.filter((e) => settings.alwaysEnabled.includes(e.id))
@@ -135,6 +141,21 @@ function Popup() {
               <rect x="2" y="4" width="20" height="14" rx="2" />
               <rect x="13" y="11" width="8" height="6" rx="1" fill="currentColor" />
             </svg>
+          </button>
+          <button
+            onClick={async () => {
+              const next = !autoPip
+              setAutoPip(next)
+              await setAutoPipEnabled(next)
+              showToast(next ? "Auto-PiP on" : "Auto-PiP off")
+            }}
+            title="Auto Picture-in-picture when you switch tabs (opt-in). Sets video.autoPictureInPicture=true on every video so the browser pops it out natively on tab blur."
+            className={`px-1.5 py-1 text-[9px] font-mono uppercase tracking-wider rounded transition-colors ${
+              autoPip
+                ? "bg-chart-1/20 text-chart-1"
+                : "text-fg/30 hover:text-fg/60 hover:bg-accent"
+            }`}>
+            Auto
           </button>
           <button onClick={saveCurrentLink} title="Save link"
             className="p-1.5 rounded hover:bg-accent text-fg/60 hover:text-fg transition-colors">

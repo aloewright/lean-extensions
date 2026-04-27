@@ -326,6 +326,18 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (command === "open-dashboard") {
     chrome.tabs.create({ url: chrome.runtime.getURL("tabs/dashboard.html"), pinned: true })
   }
+
+  if (command === "toggle-pip") {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (tab?.id) {
+      chrome.tabs.sendMessage(tab.id, { type: "TOGGLE_PIP" }, () => {
+        // Touch lastError so the runtime doesn't log when the active tab
+        // has no content script (chrome:// pages, file:// without perm,
+        // etc.). The shortcut is best-effort there.
+        void chrome.runtime.lastError
+      })
+    }
+  }
 })
 
 export {}

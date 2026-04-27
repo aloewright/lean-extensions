@@ -73,6 +73,12 @@
           "default": "Alt+Shift+L"
         },
         "description": "Open Lean Extensions dashboard"
+      },
+      "toggle-pip": {
+        "suggested_key": {
+          "default": "Alt+Shift+P"
+        },
+        "description": "Toggle picture-in-picture for the active video"
       }
     }
   }

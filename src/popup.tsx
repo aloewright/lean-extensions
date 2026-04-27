@@ -110,6 +110,29 @@ function Popup() {
             chrome.tabs.create({ url: chrome.runtime.getURL("tabs/recorder.html") })
             window.close()
           }} />
+          <button
+            onClick={async () => {
+              const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+              if (!tab?.id) return
+              chrome.tabs.sendMessage(tab.id, { type: "TOGGLE_PIP" }, (res) => {
+                if (chrome.runtime.lastError) {
+                  showToast("Reload page first")
+                  return
+                }
+                if (res?.ok) {
+                  showToast(res.action === "exited" ? "Exited PiP" : "Picture-in-picture")
+                } else {
+                  showToast(res?.reason || "PiP failed")
+                }
+              })
+            }}
+            title="Picture-in-picture (Alt+Shift+P)"
+            className="p-1.5 rounded hover:bg-accent text-fg/60 hover:text-fg transition-colors">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="4" width="20" height="14" rx="2" />
+              <rect x="13" y="11" width="8" height="6" rx="1" fill="currentColor" />
+            </svg>
+          </button>
           <button onClick={saveCurrentLink} title="Save link"
             className="p-1.5 rounded hover:bg-accent text-fg/60 hover:text-fg transition-colors">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

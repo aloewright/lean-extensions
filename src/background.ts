@@ -1,5 +1,6 @@
 import { getLinks, getLastUsed, getSettings, setLinks, setSettings, touchExtension } from "./storage"
 import { saveNote, uploadMedia, saveHighlight } from "./utils/cloudos"
+import { triggerPipInTab } from "./utils/pip-coord"
 import type { CollectedLink } from "./types"
 
 // In-memory cache for tech detections per hostname
@@ -330,12 +331,15 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (command === "toggle-pip") {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
     if (tab?.id) {
-      chrome.tabs.sendMessage(tab.id, { type: "TOGGLE_PIP" }, () => {
-        // Touch lastError so the runtime doesn't log when the active tab
-        // has no content script (chrome:// pages, file:// without perm,
-        // etc.). The shortcut is best-effort there.
-        void chrome.runtime.lastError
-      })
+      // Coordinator handles top-frame-first + iframe fallback + per-frame
+      // lastError consumption. Best-effort: we don't toast or notify on
+      // failure (chrome:// pages, file:// without perm, sites with no
+      // video — all silently no-op).
+      try {
+        await triggerPipInTab(tab.id)
+      } catch {
+        /* coordinator never throws, but be defensive */
+      }
     }
   }
 })

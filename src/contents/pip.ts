@@ -1,5 +1,12 @@
 import type { PlasmoCSConfig } from "plasmo"
 
+import {
+  PIP_EXIT_MESSAGE,
+  PIP_NO_VIDEO_REASON,
+  PIP_TOGGLE_MESSAGE,
+  type PiPResult
+} from "../utils/pip-protocol"
+
 /**
  * Picture-in-Picture content script.
  *
@@ -8,22 +15,18 @@ import type { PlasmoCSConfig } from "plasmo"
  * first found), strips any `disablePictureInPicture` attribute the site
  * has set, and toggles PiP. If the page is already in PiP, exits.
  *
- * Top-frame only — videos inside cross-origin iframes are out of reach
- * without webNavigation + per-frame messaging. Most major sites (YouTube,
- * Twitter, Vimeo on their own domain, news sites) put the video in the
- * top frame.
+ * Runs in every frame (top + iframes). The popup/background coordinator
+ * in src/utils/pip-coord.ts is responsible for picking which frame to
+ * target — typically top frame first, then iframes via webNavigation.
+ * Each frame only sees its own document.querySelectorAll('video') results,
+ * so embedded YouTube/Vimeo/etc. inside a third-party page is reachable
+ * from the iframe's own copy of this script.
  */
 
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"],
   run_at: "document_idle",
-  all_frames: false
-}
-
-interface PiPResult {
-  ok: boolean
-  action: "entered" | "exited" | "none"
-  reason?: string
+  all_frames: true
 }
 
 function pickBestVideo(): HTMLVideoElement | null {
@@ -72,7 +75,7 @@ async function togglePiP(): Promise<PiPResult> {
 
   const video = pickBestVideo()
   if (!video) {
-    return { ok: false, action: "none", reason: "No video found on this page" }
+    return { ok: false, action: "none", reason: PIP_NO_VIDEO_REASON }
   }
 
   // Some sites set disablePictureInPicture as a hostile move. Strip it.
@@ -112,11 +115,11 @@ async function togglePiP(): Promise<PiPResult> {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type === "TOGGLE_PIP") {
+  if (message?.type === PIP_TOGGLE_MESSAGE) {
     togglePiP().then(sendResponse)
     return true // async response
   }
-  if (message?.type === "EXIT_PIP") {
+  if (message?.type === PIP_EXIT_MESSAGE) {
     if (!document.pictureInPictureElement) {
       sendResponse({ ok: true, action: "none" } satisfies PiPResult)
       return

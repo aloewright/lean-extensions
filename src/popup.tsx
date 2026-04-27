@@ -8,6 +8,7 @@ import { RecordButton } from "./components/RecordPanel"
 import { fuzzySearch } from "./utils/fuzzy"
 import { getAutoPipEnabled, setAutoPipEnabled } from "./utils/pip-auto"
 import { triggerPipInTab } from "./utils/pip-coord"
+import { PIP_NO_CONTENT_SCRIPT_REASON } from "./utils/pip-protocol"
 import type { Profile } from "./types"
 
 function Popup() {
@@ -129,7 +130,7 @@ function Popup() {
                 // frame" on chrome:// pages) to a user-friendly message;
                 // pass through the browser's own messages otherwise.
                 const friendly =
-                  res.reason === "No content script in frame"
+                  res.reason === PIP_NO_CONTENT_SCRIPT_REASON
                     ? "Reload page first"
                     : res.reason || "PiP failed"
                 showToast(friendly)

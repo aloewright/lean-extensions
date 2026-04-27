@@ -171,9 +171,14 @@ const AUTO_PIP_SUPPORTED =
 let autoPipEnabled = false
 let autoPipObserver: MutationObserver | null = null
 
+// `autoPictureInPicture` isn't in TypeScript's lib.dom yet (still a draft
+// WICG spec) — Chrome ships it, we feature-detect it, and this cast keeps
+// `tsc --noEmit` quiet without touching tsconfig.
+type WithAutoPip = HTMLVideoElement & { autoPictureInPicture?: boolean }
+
 function setAutoPipAttribute(video: HTMLVideoElement, value: boolean): void {
   try {
-    video.autoPictureInPicture = value
+    ;(video as WithAutoPip).autoPictureInPicture = value
   } catch {
     // Some custom elements (or extension-injected `<video>` shims)
     // mark the property non-writable. Skip silently — there's no
@@ -187,7 +192,9 @@ function applyToAllVideos(value: boolean): void {
   // can't pierce them, and reaching into closed shadow roots from a
   // content script isn't possible without page-script injection,
   // which isn't worth the complexity for a best-effort feature.
-  const videos = document.querySelectorAll("video")
+  // Array.from rather than for-of: tsconfig doesn't enable dom.iterable
+  // here, and we don't want to flip a global lib option just for one loop.
+  const videos = Array.from(document.querySelectorAll("video"))
   for (const v of videos) {
     setAutoPipAttribute(v as HTMLVideoElement, value)
   }
@@ -196,7 +203,8 @@ function applyToAllVideos(value: boolean): void {
 function handleMutations(mutations: MutationRecord[]): void {
   if (!autoPipEnabled || !AUTO_PIP_SUPPORTED) return
   for (const m of mutations) {
-    for (const node of m.addedNodes) {
+    const added = Array.from(m.addedNodes)
+    for (const node of added) {
       if (!(node instanceof Element)) continue
       if (node instanceof HTMLVideoElement) {
         setAutoPipAttribute(node, true)
@@ -206,7 +214,7 @@ function handleMutations(mutations: MutationRecord[]): void {
       // contains a <video> several levels deep. Sweep its subtree.
       const nested = node.querySelectorAll?.("video")
       if (nested) {
-        for (const v of nested) {
+        for (const v of Array.from(nested)) {
           setAutoPipAttribute(v as HTMLVideoElement, true)
         }
       }

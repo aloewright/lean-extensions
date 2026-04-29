@@ -34,11 +34,14 @@ Test files live in `tests/`:
 - `tests/setup.ts` — mocks `@plasmohq/storage` and resets state per test
 - `tests/storage.test.ts` — covers `src/storage.ts` round-trips
 - `tests/types.test.ts` — verifies `DEFAULT_STORAGE` shape
+- `tests/background.test.ts` — toggle-all-off/on against a `chrome.management` shim
 
 The `tests` GitHub Actions workflow (`.github/workflows/test.yml`) runs the
 same `npm test` on every pull request and on every push to `main`. CI installs
 deps with `--ignore-scripts` so Plasmo's post-install hooks don't fire — the
 storage/types tests run in plain Node and don't need the built extension.
+
+Dependabot opens grouped weekly PRs; see `docs/ROADMAP.md`.
 
 ## Project layout
 

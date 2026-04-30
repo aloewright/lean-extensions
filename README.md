@@ -25,8 +25,9 @@ environment. The `@plasmohq/storage` package is mocked with an in-memory
 `Map`, so tests do not require Chrome APIs.
 
 ```bash
-npm test            # run the suite once
-npm run test:watch  # re-run on file changes
+pnpm test               # run the suite once
+pnpm run test:watch     # re-run on file changes
+pnpm test --coverage    # v8 coverage report (text + lcov)
 ```
 
 Test files live in `tests/`:
@@ -36,10 +37,17 @@ Test files live in `tests/`:
 - `tests/types.test.ts` — verifies `DEFAULT_STORAGE` shape
 - `tests/background.test.ts` — toggle-all-off/on against a `chrome.management` shim
 
-The `tests` GitHub Actions workflow (`.github/workflows/test.yml`) runs the
-same `npm test` on every pull request and on every push to `main`. CI installs
-deps with `--ignore-scripts` so Plasmo's post-install hooks don't fire — the
-storage/types tests run in plain Node and don't need the built extension.
+## Continuous Integration
+
+`.github/workflows/test.yml` runs three jobs in parallel on every PR and
+on every push to `main`:
+
+- `test` — `pnpm test` (Vitest). Required.
+- `typecheck` — `pnpm exec tsc --noEmit`. Currently `continue-on-error: true`
+  while pre-existing type debt is resolved (ALO-110).
+- `build` — `pnpm build` (full Plasmo production build, smoke-only).
+  `continue-on-error: true` so packaging drift is reported without gating
+  PRs (ALO-112).
 
 Dependabot opens grouped weekly PRs; see `docs/ROADMAP.md`.
 
@@ -58,4 +66,4 @@ src/
   utils/             # misc helpers
 ```
 
-See `ROADMAP.md` for what's next.
+See `docs/ROADMAP.md` for what's next.

@@ -1,5 +1,12 @@
 import { Storage } from "@plasmohq/storage"
-import type { CollectedLink, Group, Profile, Settings, StorageSchema } from "./types"
+import type {
+  CollectedLink,
+  ExtensionPolicy,
+  Group,
+  Profile,
+  Settings,
+  StorageSchema
+} from "./types"
 import { DEFAULT_STORAGE } from "./types"
 
 const storage = new Storage({ area: "local" })
@@ -9,7 +16,20 @@ export async function getAll(): Promise<StorageSchema> {
   const groups = await storage.get<Group[]>("groups") ?? DEFAULT_STORAGE.groups
   const collectedLinks = await storage.get<CollectedLink[]>("collectedLinks") ?? DEFAULT_STORAGE.collectedLinks
   const settings = await storage.get<Settings>("settings") ?? DEFAULT_STORAGE.settings
-  return { profiles, groups, collectedLinks, settings }
+  const extensionPolicies =
+    (await storage.get<ExtensionPolicy[]>("extensionPolicies")) ??
+    DEFAULT_STORAGE.extensionPolicies
+  const extensionLastUsed =
+    (await storage.get<Record<string, string>>("extensionLastUsed")) ??
+    DEFAULT_STORAGE.extensionLastUsed
+  return {
+    profiles,
+    groups,
+    collectedLinks,
+    settings,
+    extensionLastUsed,
+    extensionPolicies
+  }
 }
 
 export async function getSettings(): Promise<Settings> {
@@ -56,6 +76,16 @@ export async function touchExtension(extId: string): Promise<void> {
   const data = await getLastUsed()
   data[extId] = new Date().toISOString()
   await setLastUsed(data)
+}
+
+// ─── Per-extension policies (PDX-89) ────────────────────────────────
+
+export async function getPolicies(): Promise<ExtensionPolicy[]> {
+  return (await storage.get<ExtensionPolicy[]>("extensionPolicies")) ?? []
+}
+
+export async function setPolicies(policies: ExtensionPolicy[]): Promise<void> {
+  await storage.set("extensionPolicies", policies)
 }
 
 export { storage }

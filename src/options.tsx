@@ -8,6 +8,10 @@ import {
   setAiGatewayConfig,
   type AiGatewayConfig
 } from "./utils/ai-gateway"
+import { getPolicies, setPolicies } from "./storage"
+import type { ExtensionPolicy, PolicyAction } from "./types"
+
+type ConditionKind = "hostname-match" | "tab-open"
 
 function Options() {
   const [accountId, setAccountId] = useState("")
@@ -125,6 +129,8 @@ function Options() {
           </div>
         </section>
 
+        <PoliciesSection />
+
         <section className="p-4 rounded-lg bg-card border border-border space-y-2">
           <h2 className="text-sm font-medium">Where to find your credentials</h2>
           <ol className="text-[11px] text-fg/60 space-y-1 list-decimal list-inside">
@@ -144,6 +150,157 @@ function Options() {
         </section>
       </div>
     </div>
+  )
+}
+
+function PoliciesSection() {
+  const [policies, setLocalPolicies] = useState<ExtensionPolicy[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  // Draft form state for adding a new rule.
+  const [extensionId, setExtensionId] = useState("")
+  const [kind, setKind] = useState<ConditionKind>("hostname-match")
+  const [pattern, setPattern] = useState("")
+  const [action, setAction] = useState<PolicyAction>("disable")
+
+  useEffect(() => {
+    void getPolicies().then((p) => {
+      setLocalPolicies(p)
+      setLoaded(true)
+    })
+  }, [])
+
+  const persist = async (next: ExtensionPolicy[]) => {
+    setLocalPolicies(next)
+    await setPolicies(next)
+    try {
+      await chrome.runtime.sendMessage({ type: "REAPPLY_POLICIES" })
+    } catch {
+      /* options page may run outside the SW context during tests */
+    }
+  }
+
+  const onAdd = async () => {
+    const trimmedId = extensionId.trim()
+    const trimmedPattern = pattern.trim()
+    if (!trimmedId || !trimmedPattern) return
+
+    const condition =
+      kind === "hostname-match"
+        ? { kind: "hostname-match" as const, pattern: trimmedPattern }
+        : { kind: "tab-open" as const, urlPattern: trimmedPattern }
+
+    const id =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `pol-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+    const next: ExtensionPolicy[] = [
+      ...policies,
+      { id, extensionId: trimmedId, condition, action }
+    ]
+    await persist(next)
+
+    setExtensionId("")
+    setPattern("")
+  }
+
+  const onRemove = async (id: string) => {
+    const next = policies.filter((p) => p.id !== id)
+    await persist(next)
+  }
+
+  return (
+    <section className="p-4 rounded-lg bg-card border border-border space-y-3">
+      <div>
+        <h2 className="text-sm font-medium">Per-extension policy rules</h2>
+        <p className="text-[11px] text-fg/40 mt-0.5">
+          Force an extension off or on based on the active tab's hostname or
+          whether a specific URL pattern is open. Rules are evaluated on every
+          toggle and tab change.
+        </p>
+      </div>
+
+      {!loaded ? (
+        <div className="text-[11px] text-fg/40">Loading…</div>
+      ) : policies.length === 0 ? (
+        <div className="text-[11px] text-fg/40">No rules yet.</div>
+      ) : (
+        <ul className="space-y-1.5">
+          {policies.map((p) => (
+            <li
+              key={p.id}
+              className="flex items-center gap-2 text-[11px] bg-bg border border-border rounded px-2 py-1.5">
+              <code className="font-mono text-fg/70 flex-shrink-0">{p.extensionId}</code>
+              <span className="text-fg/40">·</span>
+              <span className="text-fg/70">{p.action}</span>
+              <span className="text-fg/40">when</span>
+              <span className="text-fg/70 truncate">
+                {p.condition.kind === "hostname-match"
+                  ? `host = ${p.condition.pattern}`
+                  : `tab open = ${p.condition.urlPattern}`}
+              </span>
+              <button
+                onClick={() => onRemove(p.id)}
+                className="ml-auto text-[10px] text-fg/40 hover:text-destructive transition-colors">
+                remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="border-t border-border pt-3 space-y-2">
+        <Field
+          label="Extension ID"
+          placeholder="abcdefghijklmnopabcdefghijklmnop"
+          value={extensionId}
+          onChange={setExtensionId}
+          mono
+        />
+
+        <div>
+          <label className="text-[11px] text-fg/50 block mb-1">Condition</label>
+          <div className="flex items-center gap-2">
+            <select
+              value={kind}
+              onChange={(e) => setKind(e.target.value as ConditionKind)}
+              className="text-xs py-1.5 px-2 bg-bg border border-border rounded text-fg outline-none">
+              <option value="hostname-match">hostname match</option>
+              <option value="tab-open">tab open</option>
+            </select>
+            <input
+              value={pattern}
+              onChange={(e) => setPattern(e.target.value)}
+              placeholder={
+                kind === "hostname-match"
+                  ? "*.bank.com"
+                  : "*://*.notebooklm.google.com/*"
+              }
+              className="flex-1 text-xs py-1.5 px-3 bg-bg border border-border rounded text-fg placeholder-fg/30 outline-none font-mono"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[11px] text-fg/50 block mb-1">Action</label>
+          <select
+            value={action}
+            onChange={(e) => setAction(e.target.value as PolicyAction)}
+            className="text-xs py-1.5 px-2 bg-bg border border-border rounded text-fg outline-none">
+            <option value="disable">disable when condition matches</option>
+            <option value="enable-only">enable only while condition matches</option>
+          </select>
+        </div>
+
+        <button
+          onClick={onAdd}
+          disabled={!extensionId.trim() || !pattern.trim()}
+          className="text-xs py-1.5 px-4 rounded font-medium transition-colors bg-chart-1 text-bg hover:bg-chart-1/90 disabled:opacity-40 disabled:cursor-not-allowed">
+          Add rule
+        </button>
+      </div>
+    </section>
   )
 }
 

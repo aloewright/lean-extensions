@@ -1,4 +1,13 @@
-import { getLinks, getLastUsed, getSettings, setLinks, setSettings, touchExtension } from "./storage"
+import {
+  getLinks,
+  getLastUsed,
+  getPolicies,
+  getSettings,
+  setLinks,
+  setSettings,
+  touchExtension
+} from "./storage"
+import { applyPoliciesToToggle, type PolicyContext } from "./policy"
 import { tts } from "./utils/ai-gateway"
 import { saveNote, uploadMedia, saveHighlight } from "./utils/cloudos"
 import { triggerPipInTab } from "./utils/pip-coord"
@@ -6,6 +15,42 @@ import type { CollectedLink } from "./types"
 
 // In-memory cache for tech detections per hostname
 const cachedTech = new Map<string, { techs: any[]; url: string; timestamp: number }>()
+
+// Build a snapshot of the current browser state for the policy
+// evaluator. Cheap enough to call on every toggle path; falls back to
+// safe defaults if any tabs query fails.
+async function buildPolicyContext(): Promise<PolicyContext> {
+  let activeTabUrl: string | undefined
+  let openTabUrls: string[] = []
+  try {
+    const [active] = await chrome.tabs.query({ active: true, currentWindow: true })
+    activeTabUrl = active?.url
+  } catch {
+    /* no-op */
+  }
+  try {
+    const all = await chrome.tabs.query({})
+    openTabUrls = all.map((t) => t.url ?? "").filter(Boolean)
+  } catch {
+    /* no-op */
+  }
+  return { activeTabUrl, openTabUrls }
+}
+
+// Centralized toggle wrapper: every code path that flips an extension
+// on/off goes through this so per-extension policies are honored.
+async function setEnabledWithPolicy(
+  extensionId: string,
+  desiredEnabled: boolean
+): Promise<void> {
+  const [policies, ctx] = await Promise.all([getPolicies(), buildPolicyContext()])
+  const finalEnabled = applyPoliciesToToggle(extensionId, desiredEnabled, policies, ctx)
+  try {
+    await chrome.management.setEnabled(extensionId, finalEnabled)
+  } catch {
+    /* extension may be unmanageable; ignore */
+  }
+}
 
 // Badge: show enabled extension count
 async function updateBadge() {
@@ -19,6 +64,28 @@ async function updateBadge() {
 }
 
 updateBadge()
+
+// Re-evaluate all per-extension policies against the current context.
+// Called on tab-state changes so "only enable while NotebookLM is
+// open" and friends are honored without an explicit user toggle.
+async function reapplyPolicies() {
+  const policies = await getPolicies()
+  if (policies.length === 0) return
+  const ctx = await buildPolicyContext()
+  const all = await chrome.management.getAll()
+  const selfId = chrome.runtime.id
+  for (const ext of all) {
+    if (ext.type !== "extension" || ext.id === selfId || !ext.mayDisable) continue
+    const final = applyPoliciesToToggle(ext.id, ext.enabled, policies, ctx)
+    if (final !== ext.enabled) {
+      try {
+        await chrome.management.setEnabled(ext.id, final)
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+}
 
 // Context menu: right-click to save links
 chrome.runtime.onInstalled.addListener(() => {
@@ -47,6 +114,16 @@ chrome.management.onEnabled.addListener((info) => { updateBadge(); touchExtensio
 chrome.management.onDisabled.addListener((info) => { updateBadge(); touchExtension(info.id) })
 chrome.management.onInstalled.addListener((info) => { updateBadge(); touchExtension(info.id) })
 chrome.management.onUninstalled.addListener(updateBadge)
+
+// React to tab changes so policies that depend on open-tab state are
+// re-evaluated promptly.
+if (typeof chrome !== "undefined" && chrome.tabs?.onUpdated) {
+  chrome.tabs.onUpdated.addListener((_id, info) => {
+    if (info.status === "complete" || info.url) reapplyPolicies()
+  })
+  chrome.tabs.onRemoved.addListener(() => reapplyPolicies())
+  chrome.tabs.onActivated.addListener(() => reapplyPolicies())
+}
 
 // Handle messages from popup and dashboard
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -136,6 +213,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       await setSettings(next)
       sendResponse({ ok: true })
     })
+    return true
+  }
+
+  if (message.type === "REAPPLY_POLICIES") {
+    reapplyPolicies().then(() => sendResponse({ ok: true }))
     return true
   }
 
@@ -244,15 +326,15 @@ async function switchProfile(extensionIds: string[], alwaysEnabled: string[]) {
     (e) => e.type === "extension" && e.id !== chrome.runtime.id && e.mayDisable
   )
 
-  // Disable all except always-enabled
+  // Disable all except always-enabled (policy-aware)
   const disablePromises = exts
     .filter((e) => !alwaysEnabled.includes(e.id) && e.enabled)
-    .map((e) => chrome.management.setEnabled(e.id, false))
+    .map((e) => setEnabledWithPolicy(e.id, false))
   await Promise.all(disablePromises)
 
-  // Enable profile extensions
+  // Enable profile extensions (policy-aware: a "disable" rule still wins)
   const enablePromises = extensionIds.map((id) =>
-    chrome.management.setEnabled(id, true).catch(() => {})
+    setEnabledWithPolicy(id, true).catch(() => {})
   )
   await Promise.all(enablePromises)
 }
@@ -291,10 +373,14 @@ async function checkAutoOffload() {
       if (settings.alwaysEnabled.includes(ext.id)) continue
       const lu = lastUsed[ext.id]
       if (!lu || new Date(lu).getTime() < offloadCutoff) {
-        await chrome.management.setEnabled(ext.id, false)
+        await setEnabledWithPolicy(ext.id, false)
       }
     }
   }
+
+  // After offload pass, re-evaluate policies so any "enable-only"
+  // rules whose condition is satisfied get flipped back on.
+  await reapplyPolicies()
 }
 
 // Run offload check on startup and every 6 hours
@@ -327,7 +413,7 @@ chrome.commands.onCommand.addListener(async (command) => {
     await Promise.all(
       exts
         .filter((e) => !settings.alwaysEnabled.includes(e.id) && e.enabled)
-        .map((e) => chrome.management.setEnabled(e.id, false))
+        .map((e) => setEnabledWithPolicy(e.id, false))
     )
   }
 
@@ -336,7 +422,7 @@ chrome.commands.onCommand.addListener(async (command) => {
     const exts = all.filter(
       (e) => e.type === "extension" && e.id !== chrome.runtime.id && e.mayDisable
     )
-    await Promise.all(exts.map((e) => chrome.management.setEnabled(e.id, true)))
+    await Promise.all(exts.map((e) => setEnabledWithPolicy(e.id, true)))
   }
 
   if (command === "save-link") {

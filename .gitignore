@@ -8,3 +8,5 @@ dist/
 .env.*
 # This repo uses pnpm; npm lockfiles created by ad-hoc `npm install` should not be committed.
 package-lock.json
+# Incremental TypeScript build info — created by ad-hoc `tsc --noEmit`.
+*.tsbuildinfo

@@ -34,11 +34,12 @@ environment. The `@plasmohq/storage` package is mocked with an in-memory
 `Map`, so tests do not require Chrome APIs.
 
 ```bash
-npm test            # run the suite once
+npm test            # run the unit suite once
 npm run test:watch  # re-run on file changes
+npm run test:e2e    # build + run the Puppeteer end-to-end suite
 ```
 
-Test files live in `tests/`:
+Test files live in `tests/` (unit) and `e2e/` (browser-driven):
 
 - `tests/setup.ts` — mocks `@plasmohq/storage` and resets state per test
 - `tests/storage.test.ts` — covers `src/storage.ts` round-trips
@@ -46,11 +47,29 @@ Test files live in `tests/`:
 - `tests/background.test.ts` — toggle-all-off/on against a `chrome.management` shim
 - `tests/policy.test.ts` — per-extension policy evaluator (hostname glob,
   tab-state condition, default-allow)
+- `e2e/policy-enforcement.spec.ts` — drives a real Chromium with the
+  unpacked Plasmo build via [Puppeteer](https://pptr.dev/), seeds a
+  hostname-match `disable` policy into `chrome.storage.local`,
+  navigates a tab to a `*.bank.com` fixture (resolved to a local http
+  server via `--host-resolver-rules`), and asserts that the
+  background's `chrome.tabs.onUpdated` -> `reapplyPolicies` ->
+  `chrome.management.setEnabled(id, false)` chain fires.
 
-The `tests` GitHub Actions workflow (`.github/workflows/test.yml`) runs the
-same `npm test` on every pull request and on every push to `main`. CI installs
-deps with `--ignore-scripts` so Plasmo's post-install hooks don't fire — the
-storage/types tests run in plain Node and don't need the built extension.
+The e2e suite builds the extension first (via the `pretest:e2e` hook),
+so it has the same prerequisites as `npm run build`: a working Plasmo
+toolchain. It also needs a Chromium binary, which `puppeteer` downloads
+on install (cached in `~/.cache/puppeteer`).
+
+CI workflows under `.github/workflows/`:
+
+- `test.yml` runs `pnpm test` (unit) on every PR and every push to
+  `main`. Deps are installed with `--ignore-scripts` so Plasmo's
+  post-install hooks don't fire.
+- `e2e.yml` runs `pnpm test:e2e` on every PR and every push to `main`.
+  It installs deps without `--ignore-scripts` (Plasmo is required to
+  build the extension), caches Puppeteer's downloaded Chromium across
+  runs, and runs Chromium under `xvfb-run` so the MV3 service worker
+  has a real display server to attach to.
 
 Dependabot opens grouped weekly PRs; see `docs/ROADMAP.md`.
 

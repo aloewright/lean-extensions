@@ -1,0 +1,8 @@
+{
+  "name": "lean-extensions-e2e",
+  "private": true,
+  "description": "Isolated dependency bag for the Puppeteer-driven e2e suite. Kept out of the root package.json so the unit-test CI (which runs `pnpm install --frozen-lockfile --ignore-scripts`) does not need to download Chromium, and so the root pnpm-lock.yaml stays tiny.",
+  "dependencies": {
+    "puppeteer": "^24.42.0"
+  }
+}

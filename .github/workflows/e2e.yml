@@ -1,0 +1,67 @@
+name: e2e
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Keep Puppeteer's Chromium in a stable, cacheable location.
+      PUPPETEER_CACHE_DIR: ${{ github.workspace }}/.cache/puppeteer
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Cache Puppeteer's downloaded Chromium and the isolated e2e
+      # dependency tree across runs. Keyed on `e2e/package.json` so a
+      # puppeteer version bump invalidates the cache automatically.
+      - name: Cache Puppeteer Chromium + e2e deps
+        id: cache-chromium
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.PUPPETEER_CACHE_DIR }}
+            e2e/node_modules
+          key: ${{ runner.os }}-puppeteer-${{ hashFiles('e2e/package.json') }}
+
+      # Root install: Plasmo + react + vitest. --ignore-scripts mirrors
+      # the unit workflow; e2e deps live under e2e/ and are installed
+      # separately via the `pretest:e2e` hook in package.json.
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # ubuntu-latest already ships Xvfb, but install just in case the
+      # base image changes. Use xvfb-run to provide a display for
+      # headed Chromium (MV3 service workers start fine in
+      # `headless: true` on modern Chromium, but the wrapper is cheap
+      # insurance against future regressions).
+      - name: Install xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Build extension
+        run: pnpm build
+
+      - name: Run e2e suite
+        run: xvfb-run --auto-servernum pnpm test:e2e
+
+      - name: Upload Puppeteer artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: |
+            e2e/**/*.png
+            e2e/**/*.log
+            build/chrome-mv3-prod/manifest.json
+          if-no-files-found: ignore

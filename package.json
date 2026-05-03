@@ -9,7 +9,9 @@
     "build": "plasmo build",
     "package": "plasmo package",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "pretest:e2e": "plasmo build && npm --prefix e2e install --no-save --no-package-lock --silent"
   },
   "dependencies": {
     "@plasmohq/storage": "^1.15.0",

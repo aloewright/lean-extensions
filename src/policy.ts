@@ -37,10 +37,23 @@ export function hostnameMatches(hostname: string, pattern: string): boolean {
 // in scheme, host, and path. The pattern syntax is intentionally a
 // small subset — enough to express patterns like
 // "*://*.notebooklm.google.com/*" without pulling in a dependency.
+//
+// Per Chrome match-pattern semantics, a host wildcard of the form
+// `*.foo.com` matches both `foo.com` itself AND any subdomain
+// `sub.foo.com`. We translate `*.` specially (an optional dotted
+// subdomain group) before applying the generic `*` rewrite so the
+// bare-host case isn't accidentally rejected.
 export function urlPatternToRegExp(pattern: string): RegExp {
+  // Escape regex metas, but not `*` (our wildcard). Note that '.' is
+  // escaped here to '\.', so the host wildcard becomes `*\.` post-escape.
   const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&")
-  const withWildcard = escaped.replace(/\*/g, ".*")
-  return new RegExp(`^${withWildcard}$`, "i")
+  // Use a placeholder to mark host wildcards before the generic `*`
+  // rewrite, so we don't double-rewrite them.
+  const HOST_WC_MARK = "\x00HOSTWC\x00"
+  let s = escaped.replace(/\*\\\./g, HOST_WC_MARK)
+  s = s.replace(/\*/g, ".*")
+  s = s.split(HOST_WC_MARK).join("(?:[^/]*\\.)?")
+  return new RegExp(`^${s}$`, "i")
 }
 
 export function urlMatches(url: string, pattern: string): boolean {
